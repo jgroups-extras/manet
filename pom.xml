@@ -74,10 +74,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <version.jgroups>2.5.2</version.jgroups>
         <version.jung>1.7.6</version.jung>
-        <version.commons-logging>1.2</version.commons-logging>
-        <version.log4j>1.2.16</version.log4j>
 
         <!-- nexus-staging-maven-plugin -->
         <autoReleaseAfterClose>true</autoReleaseAfterClose>
@@ -152,6 +149,25 @@
             <groupId>org.jgroups</groupId>
             <artifactId>jgroups</artifactId>
             <version>${version.jgroups}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>[2.0,)</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>[2.0,)</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>jung</groupId>
+            <artifactId>jung</artifactId>
+            <version>${version.jung}</version>
         </dependency>
 
     </dependencies>
