@@ -16,7 +16,7 @@ public interface OLSRMessageSender {
 	 * OLSRHeader to the message
 	 * @param msg
 	 */
-	public Object sendControlMessage(Message msg);
+	Object sendControlMessage(Message msg);
 
 	/**
 	 * Sends an OLSR data message.
@@ -26,5 +26,5 @@ public interface OLSRMessageSender {
 	 * @param finalDest The final destination of the message
 	 * @param mcast_addr_name 
 	 */
-	public Object sendDataMessage(Message msg, OLSRNode finalDest, String mcast_addr_name);
+	Object sendDataMessage(Message msg, OLSRNode finalDest, String mcast_addr_name);
 }

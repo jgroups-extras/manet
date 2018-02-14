@@ -1,45 +1,28 @@
 package org.jgroups.protocols;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.Serializable;
+import org.jgroups.*;
+import org.jgroups.annotations.GuardedBy;
+import org.jgroups.annotations.ManagedAttribute;
+import org.jgroups.annotations.ManagedOperation;
+import org.jgroups.annotations.Property;
+import org.jgroups.stack.Protocol;
+import org.jgroups.util.BoundedList;
+import org.jgroups.util.Streamable;
+import urv.bwcalc.BwData;
+import urv.conf.PropertiesLoader;
+import urv.olsr.data.OLSRNode;
+import urv.olsr.mcast.TopologyEvent;
+
+import java.io.*;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.Vector;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import org.jgroups.Address;
-import org.jgroups.Event;
-import org.jgroups.Global;
-import org.jgroups.Header;
-import org.jgroups.Message;
-import org.jgroups.View;
-import org.jgroups.annotations.GuardedBy;
-import org.jgroups.stack.Protocol;
-import org.jgroups.util.BoundedList;
-import org.jgroups.util.Streamable;
-import org.jgroups.util.Util;
-
-import urv.bwcalc.BwData;
-import urv.conf.PropertiesLoader;
-import urv.olsr.data.OLSRNode;
-import urv.olsr.mcast.TopologyEvent;
+import java.util.function.Supplier;
 
 
 /**
@@ -64,24 +47,18 @@ import urv.olsr.mcast.TopologyEvent;
  */
 public class FC extends Protocol {
 
-    private static final String name="FC";
-
     private final static FcHeader REPLENISH_HDR=new FcHeader(FcHeader.REPLENISH);
-
-
     private final static FcHeader CREDIT_REQUEST_HDR=new FcHeader(FcHeader.CREDIT_REQUEST);
+    private final static String   RECEIVED_CREDITS = "RECEIVED_CREDITS";
+    private final static String   SENT_CREDITS = "SENT_CREDITS";
 
-    private final static String RECEIVED_CREDITS = "RECEIVED_CREDITS";
-
-    private final static String SENT_CREDITS = "SENT_CREDITS";
     /**
      * Map<Address,Long>: keys are members, values are credits left. For each send, the
      * number of credits is decremented by the message size. A HashMap rather than a ConcurrentHashMap is
      * currently used as there might be null values
      */
     @GuardedBy("sent_lock")
-    private final Map<Address, CreditPerNodeUnit> sent=new HashMap<Address, CreditPerNodeUnit>(11);
-    // final Map sent=new ConcurrentHashMap(11);
+    private final Map<Address, CreditPerNodeUnit> sent=new HashMap<>(11);
 
     /**
      * Map<Address,Long>: keys are members, values are credits left (in bytes).
@@ -90,50 +67,48 @@ public class FC extends Protocol {
      * is received after reaching <tt>min_credits</tt> credits.
      */
     @GuardedBy("received_lock")
-    private final Map<Address, CreditPerNodeUnit> received=new ConcurrentHashMap<Address, CreditPerNodeUnit>(11);
+    private final Map<Address, CreditPerNodeUnit> received=new ConcurrentHashMap<>(11);
 
     /**
      * List of members from whom we expect credits
      */
     @GuardedBy("sent_lock")
-    private final Set<Address> creditors=new HashSet<Address>(11);
+    private final Set<Address> creditors=new HashSet<>(11);
 
     /** Peers who have asked for credit that we didn't have */
-    private final Set<Address> pending_requesters=new HashSet<Address>(11);
+    private final Set<Address> pending_requesters=new HashSet<>(11);
     
     /**
      * Max number of bytes to send per receiver until an ack must
      * be received before continuing sending
      */
-    private long max_credits=500;
+    @Property(description="Max number of credits (in bytes)")
+    protected long max_credits=500;
 
     private Long max_credits_constant=max_credits;
-
-    /**
-     * Determines whether or not to block on down(). Set when not enough credit is available to send a message
-     * to all or a single member
-     */
-    // @GuardedBy("sent_lock")
-    // private boolean insufficient_credit=false;
 
     /**
      * Max time (in milliseconds) to block. If credit hasn't been received after max_block_time, we send
      * a REPLENISHMENT request to the members from which we expect credits. A value <= 0 means to
      * wait forever.
      */
-    private long max_block_time=5000;
+    @Property(description="Max time (in milliseconds) to block. If credit hasn't been received after max_block_time, " +
+      "we send a REPLENISHMENT request to the members from which we expect credits. A value <= 0 means to wait forever")
+    protected long max_block_time=5000;
 
     /**
      * If credits fall below this limit, we send more credits to the sender. (We also send when
      * credits are exhausted (0 credits left))
      */
-    private double min_threshold=0.25;
+    @Property(description="Threshold (in bytes) at which a receiver sends credits to a sender")
+    protected double min_threshold=0.25;
 
     /**
      * Computed as <tt>max_credits</tt> times <tt>min_theshold</tt>. If explicitly set, this will
      * override the above computation
      */
-    private long min_credits=0;
+    @Property(description="Computed as max_credits times min_theshold. If set explicitly, this will override min_threshold")
+    protected long min_credits;
 
 
     /**
@@ -141,8 +116,12 @@ public class FC extends Protocol {
      * the distance in hops between neighbors. However, we need to ensure a minimal maximum of credits
      * because if the hop distance is high, the credit assigned will be so low that the workflow of the
      * credits between nodes will not work correctly
-     */    
-    private long lowest_max_credits = max_credits;
+     */
+    @Property(description="When we use the DynamicCredit assignment by hop count, the credit decreases in function of " +
+      "the distance in hops between neighbors. However, we need to ensure a minimal maximum of credits because if the " +
+      "hop distance is high, the credit assigned will be so low that the workflow of the " +
+      "credits between nodes will not work correctly")
+    protected long lowest_max_credits = max_credits;
     
     /**
      * Whether FC is still running, this is set to false when the protocol terminates (on stop())
@@ -165,13 +144,18 @@ public class FC extends Protocol {
     private final Condition credits_available=sent_lock.newCondition();
 
     private Address localAddress;
+
     /**
      * Whether an up thread that comes back down should be allowed to
      * bypass blocking if all credits are exhausted. Avoids JGRP-465.
      * Set to false by default in 2.5 because we have OOB messages for credit replenishments - this flag should not be set
      * to true if the concurrent stack is used
      */
-    private boolean ignore_synchronous_response=false;
+    @Property(description="hether an up thread that comes back down should be allowed to bypass blocking if all " +
+      "credits are exhausted. Avoids JGRP-465. Set to false by default in 2.5 because we have OOB messages for credit " +
+      "replenishments - this flag should not be set to true if the concurrent stack is used")
+    protected boolean ignore_synchronous_response;
+
     /**
      * Thread that carries messages through up() and shouldn't be blocked
      * in down() if ignore_synchronous_response==true. JGRP-465.
@@ -181,16 +165,16 @@ public class FC extends Protocol {
     @GuardedBy("sent_lock")
     private long last_credit_request=0;
 
-    private int num_blockings=0;
+    private int num_blockings;
 
     private int num_credit_requests_received=0, num_credit_requests_sent=0;
     private int num_credit_responses_sent=0, num_credit_responses_received=0;
     
-    private long total_time_blocking=0;
+    private long total_time_blocking;
     private final BoundedList last_blockings=new BoundedList(50);
 
     private static long computeLowestCredit(Map<Address, CreditPerNodeUnit> m) {
-        Collection<Long> credits = new ArrayList<Long>();
+        Collection<Long> credits =new ArrayList<>();
         for (CreditPerNodeUnit creditPerNodeUnit : m.values()){
         	credits.add(creditPerNodeUnit.getCreditsLeft());
         }        
@@ -198,7 +182,7 @@ public class FC extends Protocol {
     }
 
     private static long computeLowestMaximumCredit(Map<Address, CreditPerNodeUnit> m) {
-        Collection<Long> credits = new ArrayList<Long>();
+        Collection<Long> credits =new ArrayList<>();
         for (CreditPerNodeUnit creditPerNodeUnit : m.values()){
         	credits.add(creditPerNodeUnit.getMaxCredits());
         }        
@@ -213,36 +197,18 @@ public class FC extends Protocol {
         return sb.toString();
     }
 
-    public Object down(Event evt) {
-        switch(evt.getType()) {
-            case Event.MSG:
-                return handleDownMessage(evt);
-        }
-        return down_prot.down(evt); // this could potentially use the lower protocol's thread which may block
-    }
 
-    public Map<String, Object> dumpStats() {
-        Map<String, Object> retval=super.dumpStats();
-        if(retval == null)
-            retval=new HashMap<String, Object>();
-        retval.put("senders", printMap(sent));
-        retval.put("receivers", printMap(received));
-        retval.put("num_blockings", this.num_blockings);
-        retval.put("avg_time_blocked", getAverageTimeBlocked());
-        retval.put("num_replenishments", this.num_credit_responses_received);
-        retval.put("total_time_blocked", total_time_blocking);
-        retval.put("num_credit_requests", (long)num_credit_requests_sent);
-        return retval;
-    }
-
+    @ManagedAttribute(description="Average time blocked (in ms)")
 	public double getAverageTimeBlocked() {
         return num_blockings == 0? 0.0 : total_time_blocking / (double)num_blockings;
     }
 
+    @ManagedAttribute
 	public long getLowest_max_credits() {
 		return lowest_max_credits;
 	}
 
+	@ManagedAttribute
     public long getMaxBlockTime() {
         return max_block_time;
     }
@@ -251,52 +217,59 @@ public class FC extends Protocol {
         return max_credits;
     }
 
+    @ManagedAttribute
     public long getMinCredits() {
         return min_credits;
     }
 
+    @ManagedAttribute
     public double getMinThreshold() {
         return min_threshold;
     }
 
-    public final String getName() {
-        return name;
-    }
-
+    @ManagedAttribute
     public int getNumberOfBlockings() {
         return num_blockings;
     }
 
+    @ManagedAttribute
     public int getNumberOfCreditRequestsReceived() {
         return num_credit_requests_received;
     }
 
+    @ManagedAttribute
     public int getNumberOfCreditRequestsSent() {
         return num_credit_requests_sent;
     }
 
+    @ManagedAttribute
     public int getNumberOfCreditResponsesReceived() {
         return num_credit_responses_received;
     }
 
+    @ManagedAttribute
     public int getNumberOfCreditResponsesSent() {
         return num_credit_responses_sent;
     }
 
+    @ManagedAttribute
     public long getTotalTimeBlocked() {
         return total_time_blocking;
     }
 
+    @ManagedOperation
     public String printCredits() {
         StringBuilder sb=new StringBuilder();
         sb.append("senders:\n").append(printMap(sent)).append("\n\nreceivers:\n").append(printMap(received));
         return sb.toString();
     }
 
+    @ManagedOperation
     public String printReceiverCredits() {
         return printMap(received);
     }
 
+    @ManagedOperation
     public String printSenderCredits() {
         return printMap(sent);
     }
@@ -306,7 +279,7 @@ public class FC extends Protocol {
         num_blockings=0;
         num_credit_responses_sent=num_credit_responses_received=num_credit_requests_received=num_credit_requests_sent=0;
         total_time_blocking=0;
-        last_blockings.removeAll();
+        last_blockings.clear();
     }
 
     public void setLowest_max_credits(long lowest_max_credits) {
@@ -332,65 +305,98 @@ public class FC extends Protocol {
         this.min_threshold=min_threshold;
     }
 
-    public boolean setProperties(Properties props) {
-        String str;
-        boolean min_credits_set=false;
 
-        super.setProperties(props);
-        str=props.getProperty("max_credits");
-        if(str != null) {
-            max_credits=Long.parseLong(str);
-            props.remove("max_credits");
-        }
-
-        str=props.getProperty("min_threshold");
-        if(str != null) {
-            min_threshold=Double.parseDouble(str);
-            props.remove("min_threshold");
-        }
-
-        str=props.getProperty("lowest_max_credits");
-        if(str != null) {
-        	lowest_max_credits=Long.parseLong(str);
-            props.remove("lowest_max_credits");
-        }
-        
-        str=props.getProperty("min_credits");
-        if(str != null) {
-            min_credits=Long.parseLong(str);
-            props.remove("min_credits");
-            min_credits_set=true;
-        }
-
-        if(!min_credits_set)
-            min_credits=(long)((double)max_credits * min_threshold);
-
-        str=props.getProperty("max_block_time");
-        if(str != null) {
-            max_block_time=Long.parseLong(str);
-            props.remove("max_block_time");
-        }
-
-        Util.checkBufferSize("FC.max_credits", max_credits);
-        str=props.getProperty("ignore_synchronous_response");
-        if(str != null) {
-            ignore_synchronous_response=Boolean.valueOf(str);
-            props.remove("ignore_synchronous_response");
-        }
-
-        if(!props.isEmpty()) {
-            log.error("the following properties are not recognized: " + props);
-            return false;
-        }
-        max_credits_constant=max_credits;
-        return true;
-    }
-
-
+    @ManagedOperation
     public String showLastBlockingTimes() {
         return last_blockings.toString();
     }
 
+
+    public Object down(Message msg) {
+        int length=msg.getLength();
+        Address dest=msg.getDest();
+
+        sent_lock.lock();
+        try {
+            if(length > lowest_credit) { // then block and loop asking for credits until enough credits are available
+                if(ignore_synchronous_response && ignore_thread == Thread.currentThread()) { // JGRP-465
+                    if(log.isTraceEnabled())
+                        log.trace("bypassing blocking to avoid deadlocking " + Thread.currentThread());
+                }
+                else {
+                    determineCreditors(dest, length);
+                    long start_blocking=System.currentTimeMillis();
+                    num_blockings++; // we count overall blockings, not blockings for *all* threads
+                    if(log.isTraceEnabled())
+                        log.trace("Starting blocking. lowest_credit=" + lowest_credit + "; msg length =" + length);
+
+                    while(length > lowest_credit && running) {
+                        try {
+                            boolean rc=credits_available.await(max_block_time, TimeUnit.MILLISECONDS);
+                            if(rc || length <= lowest_credit || !running)
+                                break;
+
+                            long wait_time=System.currentTimeMillis() - last_credit_request;
+                            if(wait_time >= max_block_time) {
+
+                                // we have to set this var now, because we release the lock below (for sending a
+                                // credit request), so all blocked threads would send a credit request, leading to
+                                // a credit request storm
+                                last_credit_request=System.currentTimeMillis();
+
+                                // we need to send the credit requests down *without* holding the sent_lock, otherwise we might
+                                // run into the deadlock described in http://jira.jboss.com/jira/browse/JGRP-292
+                                Map<Address,CreditPerNodeUnit> sent_copy=new HashMap<>(sent);
+                                sent_copy.keySet().retainAll(creditors);
+                                sent_lock.unlock();
+                                try {
+                                    // System.out.println(new Date() + " --> credit request");
+                                    for(Map.Entry<Address,CreditPerNodeUnit> entry: sent_copy.entrySet()) {
+                                        sendCreditRequest(entry.getKey(), entry.getValue().getCreditsLeft());
+                                    }
+                                }
+                                finally {
+                                    sent_lock.lock();
+                                }
+                            }
+                        }
+                        catch(InterruptedException e) {
+                            // set the interrupted flag again, so the caller's thread can handle the interrupt as well
+
+                            // bela June 15 2007: don't do this as this will trigger an infinite loop !!
+                            // (http://jira.jboss.com/jira/browse/JGRP-536)
+                            // Thread.currentThread().interrupt();
+                        }
+                    }
+                    // if(!running) // don't send the message if not running anymore
+                    // return null;
+
+                    long block_time=System.currentTimeMillis() - start_blocking;
+                    if(log.isTraceEnabled())
+                        log.trace("total time blocked: " + block_time + " ms");
+                    total_time_blocking+=block_time;
+                    last_blockings.add(block_time);
+                }
+            }
+
+            long tmp=decrementCredit(sent, dest, length);
+            if(tmp != -1)
+                lowest_credit=Math.min(tmp, lowest_credit);
+        }
+        finally {
+            sent_lock.unlock();
+        }
+
+        // send message - either after regular processing, or after blocking (when enough credits available again)
+        return down_prot.down(msg);
+    }
+
+    public void init() throws Exception {
+        super.init();
+        if(min_credits == 0)
+            min_credits=(long)((double)max_credits * min_threshold);
+        max_credits_constant=max_credits;
+    }
 
     public void start() throws Exception {
         super.start();
@@ -440,60 +446,58 @@ public class FC extends Protocol {
 
     public Object up(Event evt) {
         switch(evt.getType()) {
-        	
         	case Event.SET_LOCAL_ADDRESS:
-
-				localAddress = (Address) evt.getArg();
+				localAddress=evt.getArg();
 				break;
-				
-            case Event.MSG:
-                
-                // JGRP-465. We only deal with msgs to avoid having to use a concurrent collection; ignore views,
-                // suspicions, etc which can come up on unusual threads.
-                if(ignore_thread == null && ignore_synchronous_response)
-                    ignore_thread=Thread.currentThread();
-
-                Message msg=(Message)evt.getArg();
-                FcHeader hdr=(FcHeader)msg.getHeader(name);
-                if(hdr != null) {
-                    switch(hdr.type) {
-                        case FcHeader.REPLENISH:
-                            num_credit_responses_received++;
-                            handleCredit(msg.getSrc(), (Number)msg.getObject());
-                            break;
-                        case FcHeader.CREDIT_REQUEST:
-                            num_credit_requests_received++;
-                            Address sender=msg.getSrc();
-                            Long sent_credits=(Long)msg.getObject();
-                            handleCreditRequest(received, received_lock, sender, sent_credits);
-                            break;
-                        default:
-                            log.error("header type " + hdr.type + " not known");
-                            break;
-                    }
-                    return null; // don't pass message up
-                } else if (msg.getHeader(BW_CALC.name)!=null && msg.getHeader(BW_CALC.name) instanceof BwCalcHeader) {
-            		//FC will also use the BW_CALC messages to perform update its local node credits
-					updateOurOwnBandwidth(msg);
-					return null;
-        		} else {
-                    Address sender=msg.getSrc();
-                    long new_credits=adjustCredit(received, received_lock, sender, msg.getLength());
-                    try {
-                        return up_prot.up(evt);
-                    }
-                    finally {
-                        if(new_credits > 0) {
-                            if(log.isTraceEnabled()) log.trace("sending " + new_credits + " credits to " + sender);
-                            sendCredit(sender, new_credits);
-                        }
-                    }
-                }
             case Event.VIEW_CHANGE:
-                handleViewChange(((View)evt.getArg()));
+                handleViewChange(evt.getArg());
                 break;
         }
         return up_prot.up(evt);
+    }
+
+
+    public Object up(Message msg) {
+        // JGRP-465. We only deal with msgs to avoid having to use a concurrent collection; ignore views,
+        // suspicions, etc which can come up on unusual threads.
+        if(ignore_thread == null && ignore_synchronous_response)
+            ignore_thread=Thread.currentThread();
+
+        FcHeader hdr=msg.getHeader(id);
+        if(hdr != null) {
+            switch(hdr.type) {
+                case FcHeader.REPLENISH:
+                    num_credit_responses_received++;
+                    handleCredit(msg.getSrc(), msg.getObject());
+                    break;
+                case FcHeader.CREDIT_REQUEST:
+                    num_credit_requests_received++;
+                    Address sender=msg.getSrc();
+                    Long sent_credits=msg.getObject();
+                    handleCreditRequest(received, received_lock, sender, sent_credits);
+                    break;
+                default:
+                    log.error("header type " + hdr.type + " not known");
+                    break;
+            }
+            return null; // don't pass message up
+        } else if (msg.getHeader(Constants.BW_CALC_ID)!=null && msg.getHeader(Constants.BW_CALC_ID) instanceof BwCalcHeader) {
+            //FC will also use the BW_CALC messages to perform update its local node credits
+            updateOurOwnBandwidth(msg);
+            return null;
+        } else {
+            Address sender=msg.getSrc();
+            long new_credits=adjustCredit(received, received_lock, sender, msg.getLength());
+            try {
+                return up_prot.up(msg);
+            }
+            finally {
+                if(new_credits > 0) {
+                    if(log.isTraceEnabled()) log.trace("sending " + new_credits + " credits to " + sender);
+                    sendCredit(sender, new_credits);
+                }
+            }
+        }
     }
 
     /**
@@ -539,7 +543,7 @@ public class FC extends Protocol {
      * @return The lowest number of credits left, or -1 if a unicast member was not found
      */
     private long decrementCredit(Map<Address, CreditPerNodeUnit> m, Address dest, long credits) {
-        boolean multicast=dest == null || dest.isMulticastAddress();
+        boolean multicast=dest == null;
         //The lowest variable is initialized with the max variable of the destination or the lowest maximum
         //of the whole network
         long lowest = (!multicast)? m.get(dest).getMaxCredits() : computeLowestCredit(m), new_credit;
@@ -575,7 +579,7 @@ public class FC extends Protocol {
      * @param length
      */
     private void determineCreditors(Address dest, int length) {
-        boolean multicast=dest == null || dest.isMulticastAddress();
+        boolean multicast=dest == null;
         Address mbr;
         Long credits;
         if(multicast) {
@@ -600,8 +604,7 @@ public class FC extends Protocol {
      * @param updateEvent
      * @return credit for node
      */
-    private CreditPerNodeUnit getDynamicCredit(OLSRNode neighbor, View updateEvent, 
-    		Map<Address, CreditPerNodeUnit> members, String creditType){
+    private CreditPerNodeUnit getDynamicCredit(OLSRNode neighbor, View updateEvent, String creditType){
 		if (PropertiesLoader.isDynamicCredit() && updateEvent instanceof TopologyEvent){
 	    	/*
 		     * The creditors will receive a credit depending on its hop distance from
@@ -727,7 +730,7 @@ public class FC extends Protocol {
                     // a sender might have negative credits, e.g. -20000. If we subtracted -20000 from max_credits,
                     // we'd end up with max_credits + 20000, and send too many credits back. So if the sender's
                     // credits is negative, we simply send max_credits back
-                    long credits_left=Math.max(0, left_credits.longValue());
+                    long credits_left=Math.max(0, left_credits);
                     credit_response=senderCreditTowardsUs.getMaxCredits() - credits_left;
                     // credit_response = max_credits;
                     map.get(sender).setCreditsLeft(senderCreditTowardsUs.getMaxCredits());
@@ -752,89 +755,12 @@ public class FC extends Protocol {
     }
 
 
-    private Object handleDownMessage(Event evt) {
-        Message msg=(Message)evt.getArg();
-        int length=msg.getLength();
-        Address dest=msg.getDest();
 
-        sent_lock.lock();
-        try {
-            if(length > lowest_credit) { // then block and loop asking for credits until enough credits are available
-                if(ignore_synchronous_response && ignore_thread == Thread.currentThread()) { // JGRP-465
-                    if(log.isTraceEnabled())
-                        log.trace("bypassing blocking to avoid deadlocking " + Thread.currentThread());
-                }
-                else {
-                    determineCreditors(dest, length);
-                    long start_blocking=System.currentTimeMillis();
-                    num_blockings++; // we count overall blockings, not blockings for *all* threads
-                    if(log.isTraceEnabled())
-                        log.trace("Starting blocking. lowest_credit=" + lowest_credit + "; msg length =" + length);
 
-                    while(length > lowest_credit && running) {
-                        try {
-                            boolean rc=credits_available.await(max_block_time, TimeUnit.MILLISECONDS);
-                            if(rc || length <= lowest_credit || !running)
-                                break;
 
-                            long wait_time=System.currentTimeMillis() - last_credit_request;
-                            if(wait_time >= max_block_time) {
-
-                                // we have to set this var now, because we release the lock below (for sending a
-                                // credit request), so all blocked threads would send a credit request, leading to
-                                // a credit request storm
-                                last_credit_request=System.currentTimeMillis();
-
-                                // we need to send the credit requests down *without* holding the sent_lock, otherwise we might
-                                // run into the deadlock described in http://jira.jboss.com/jira/browse/JGRP-292
-                                Map<Address,CreditPerNodeUnit> sent_copy=new HashMap<Address,CreditPerNodeUnit>(sent);
-                                sent_copy.keySet().retainAll(creditors);
-                                sent_lock.unlock();
-                                try {
-                                    // System.out.println(new Date() + " --> credit request");
-                                    for(Map.Entry<Address,CreditPerNodeUnit> entry: sent_copy.entrySet()) {
-                                        sendCreditRequest(entry.getKey(), entry.getValue().getCreditsLeft());
-                                    }
-                                }
-                                finally {
-                                    sent_lock.lock();
-                                }
-                            }
-                        }
-                        catch(InterruptedException e) {
-                            // set the interrupted flag again, so the caller's thread can handle the interrupt as well
-
-                            // bela June 15 2007: don't do this as this will trigger an infinite loop !!
-                            // (http://jira.jboss.com/jira/browse/JGRP-536)
-                            // Thread.currentThread().interrupt();
-                        }
-                    }
-                    // if(!running) // don't send the message if not running anymore
-                       // return null;
-
-                    long block_time=System.currentTimeMillis() - start_blocking;
-                    if(log.isTraceEnabled())
-                        log.trace("total time blocked: " + block_time + " ms");
-                    total_time_blocking+=block_time;
-                    last_blockings.add(new Long(block_time));
-                }
-            }
-
-            long tmp=decrementCredit(sent, dest, length);
-            if(tmp != -1)
-                lowest_credit=Math.min(tmp, lowest_credit);
-        }
-        finally {
-            sent_lock.unlock();
-        }
-
-        // send message - either after regular processing, or after blocking (when enough credits available again)
-        return down_prot.down(evt);
-    }
     private void handleViewChange(View updateEvent) {
-        Address addr;
         //Use the membership inside the list of the UpdateEvent
-        Vector<Address> mbrs = updateEvent.getMembers();
+        List<Address> mbrs=updateEvent.getMembers();
         if(mbrs == null) return;
         if(log.isTraceEnabled()) log.trace("new membership: " + mbrs);
 
@@ -844,8 +770,7 @@ public class FC extends Protocol {
         try {        	
         	OLSRNode neighbor = new OLSRNode();        	
             //add members not in membership to received and sent hashmap (with full credits)
-            for(int i=0; i < mbrs.size(); i++) {
-                addr=(Address)mbrs.elementAt(i);
+            for(Address addr: mbrs) {
                 //Modify the address of the neighbor variable
                 try {
 					neighbor.setValue(InetAddress.getByName(addr.toString().split(":")[0]));
@@ -854,31 +779,19 @@ public class FC extends Protocol {
 				}
 				//The received map is filled with our own capacity depending on the distance 
 				//of the neighbour
-                received.put(addr, getDynamicCredit(neighbor, updateEvent, received, RECEIVED_CREDITS));
+                received.put(addr, getDynamicCredit(neighbor, updateEvent, RECEIVED_CREDITS));
                 //The sent map is filled with the capacity of the rest of the nodes depending
                 //on the distance from us
-                sent.put(addr, getDynamicCredit(neighbor, updateEvent, sent, SENT_CREDITS));
+                sent.put(addr, getDynamicCredit(neighbor, updateEvent, SENT_CREDITS));
             }
             // remove members that left
-            for(Iterator it=received.keySet().iterator(); it.hasNext();) {
-                addr=(Address)it.next();
-                if(!mbrs.contains(addr))
-                    it.remove();
-            }
+            received.keySet().retainAll(mbrs);
 
             // remove members that left
-            for(Iterator it=sent.keySet().iterator(); it.hasNext();) {
-                addr=(Address)it.next();
-                if(!mbrs.contains(addr))
-                    it.remove(); // modified the underlying map
-            }
+            sent.keySet().retainAll(mbrs);
 
             // remove all creditors which are not in the new view
-            for(Iterator it=creditors.iterator(); it.hasNext();) {
-            	addr=(Address)it.next();
-                if(!mbrs.contains(addr))
-                	it.remove();
-            }
+            creditors.retainAll(mbrs);
 
             if(log.isTraceEnabled()) log.trace("creditors are " + creditors);
             if(creditors.isEmpty()) {
@@ -897,10 +810,8 @@ public class FC extends Protocol {
             number=(int)credit;
         else
             number=credit;
-        Message msg=new Message(dest, null, number);
-        msg.setFlag(Message.OOB);
-        msg.putHeader(name, REPLENISH_HDR);
-        down_prot.down(new Event(Event.MSG, msg));
+        Message msg=new Message(dest, number).setFlag(Message.Flag.OOB).putHeader(id, REPLENISH_HDR);
+        down_prot.down(msg);
         num_credit_responses_sent++;
     }
     /**
@@ -912,9 +823,8 @@ public class FC extends Protocol {
     private void sendCreditRequest(final Address dest, Long credits_left) {
         if(log.isTraceEnabled())
             log.trace("sending credit request to " + dest);
-        Message msg=new Message(dest, null, credits_left);
-        msg.putHeader(name, CREDIT_REQUEST_HDR);
-        down_prot.down(new Event(Event.MSG, msg));
+        Message msg=new Message(dest, credits_left).putHeader(id, CREDIT_REQUEST_HDR);
+        down_prot.down(msg);
         num_credit_requests_sent++;
     }    
     /**
@@ -924,21 +834,30 @@ public class FC extends Protocol {
      */
 	private void updateOurOwnBandwidth(Message msg) {
 		//Get bandwidth information
-		BwData bd = (BwData) msg.getObject();
+		BwData bd =msg.getObject();
 		//Update receiving capacity
 		received_lock.lock();
-		for (Address address : received.keySet()){
-			received.get(address).setCreditsLeft(bd.getMaxIncomingBytes());
-			received.get(address).setMaxCredits(bd.getMaxIncomingBytes());
-		}
-		received_lock.unlock();
+		try {
+            for(Map.Entry<Address,CreditPerNodeUnit> addressCreditPerNodeUnitEntry : received.entrySet()) {
+                addressCreditPerNodeUnitEntry.getValue().setCreditsLeft(bd.getMaxIncomingBytes());
+                addressCreditPerNodeUnitEntry.getValue().setMaxCredits(bd.getMaxIncomingBytes());
+            }
+        }
+        finally {
+            received_lock.unlock();
+        }
+
 		//Update sending to ourselves
 		sent_lock.lock();
-		if (sent.get(localAddress)!=null){
-			sent.get(localAddress).setCreditsLeft(bd.getMaxIncomingBytes());
-			sent.get(localAddress).setMaxCredits(bd.getMaxIncomingBytes());
-		}
-		sent_lock.unlock();
+		try {
+            if(sent.get(localAddress) != null) {
+                sent.get(localAddress).setCreditsLeft(bd.getMaxIncomingBytes());
+                sent.get(localAddress).setMaxCredits(bd.getMaxIncomingBytes());
+            }
+        }
+        finally {
+            sent_lock.unlock();
+        }
 	}
    
 	//	INNER CLASSES --
@@ -957,16 +876,16 @@ public class FC extends Protocol {
             this.type=type;
         }
 
-        public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-            type=in.readByte();
+        public short                      getMagicId()     {return Constants.FC_ID;}
+        public Supplier<? extends Header> create()         {return FcHeader::new;}
+        public int                        serializedSize() {return Global.BYTE_SIZE;}
+
+        public void writeTo(DataOutput out) throws Exception {
+            out.writeByte(type);
         }
 
-        public void readFrom(DataInputStream in) throws IOException, IllegalAccessException, InstantiationException {
+        public void readFrom(DataInput in) throws Exception {
             type=in.readByte();
-        }
-
-        public int size() {
-            return Global.BYTE_SIZE;
         }
 
         public String toString() {
@@ -980,24 +899,16 @@ public class FC extends Protocol {
             }
         }
 
-        public void writeExternal(ObjectOutput out) throws IOException {
-            out.writeByte(type);
-        }
 
-        public void writeTo(DataOutputStream out) throws IOException {
-            out.writeByte(type);
-        }
     }    
     /**
-     * This class will be the storage unit for the credits left and max_credits
-     * of each node into the network.
+     * This class will be the storage unit for the credits left and max_credits of each node into the network.
      */
-    private class CreditPerNodeUnit implements Serializable{
+    private class CreditPerNodeUnit {
     	
     	//	CLASS ATTRIBUTES --
-    	
-		private static final long serialVersionUID = 1L;
-		private long creditsLeft;
+
+        private long creditsLeft;
     	private long maxCredits = max_credits;
     	
     	//	CONSTRUCTORS --
@@ -1012,12 +923,7 @@ public class FC extends Protocol {
 		
 		@Override
 		public String toString() {
-			StringBuffer sb = new StringBuffer();
-			sb.append("CREDIT LEFT: ");
-			sb.append(getCreditsLeft());
-			sb.append(" - MAX CREDITS: ");
-			sb.append(getMaxCredits());
-			return sb.toString();
+			return String.format("CREDIT LEFT: %s - MAX CREDITS: %d", getCreditsLeft(), getMaxCredits());
 		}
 
 		//	PUBLIC METHODS --

@@ -26,8 +26,8 @@ public class OLSRNodePair {
 	//	OVERRIDDEN METHODS --
 	
 	public Object clone(){
-		OLSRNode orig = (OLSRNode) this.originator.clone();
-		OLSRNode advertised = (OLSRNode) this.advertised.clone();		
+		OLSRNode orig = (OLSRNode) this.originator.copy();
+		OLSRNode advertised = (OLSRNode) this.advertised.copy();
 		return new OLSRNodePair(orig,advertised);
 	}
 	public boolean equals(Object obj){

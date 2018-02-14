@@ -29,7 +29,7 @@ public class OLSRSet extends HashSet<OLSRNode> implements BandwidthUpdatable {
 		synchronized (lock) {
 			OLSRSet newSet = new OLSRSet();
 			for(OLSRNode node:this){
-				newSet.add((OLSRNode)node.clone());
+				newSet.add((OLSRNode)node.copy());
 			}			
 			return newSet;
 		}
@@ -93,7 +93,7 @@ public class OLSRSet extends HashSet<OLSRNode> implements BandwidthUpdatable {
 			this.clear();
 			for(OLSRNode node:list){
 				
-				this.add((OLSRNode)node.clone());
+				this.add((OLSRNode)node.copy());
 			}
 		}
 	}
@@ -107,7 +107,7 @@ public class OLSRSet extends HashSet<OLSRNode> implements BandwidthUpdatable {
 		synchronized (lock) {
 			this.clear();
 			for(OLSRNode node:set){
-				this.add((OLSRNode)node.clone());
+				this.add((OLSRNode)node.copy());
 			}
 		}
 	}

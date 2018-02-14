@@ -1,16 +1,13 @@
 package org.jgroups.protocols;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Timer;
-import java.util.TimerTask;
-
 import org.jgroups.Event;
 import org.jgroups.Message;
+import org.jgroups.annotations.Property;
 import org.jgroups.stack.Protocol;
-
 import urv.bwcalc.BwData;
+
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Bandwidth Calculator protocol.
@@ -28,12 +25,8 @@ public class BW_CALC extends Protocol {
 	 * @see BW_CALC#scheduler
 	 */
 	private static final long default_info_millis = 1000;	
-	private static final BwCalcHeader msg_header = new BwCalcHeader();    
-    /**
-     * The protocol name
-     */
-    protected static final String name = "BW_CALC";
-	
+	private static final BwCalcHeader msg_header = new BwCalcHeader();
+
     //	CLASS FIELDS --
     
     /**
@@ -41,15 +34,23 @@ public class BW_CALC extends Protocol {
 	 * @see BW_CALC#default_info_millis
 	 * @see BW_CALC#scheduler
 	 */
-    private long info_millis = default_info_millis;    
+    @Property(description="The period (in milliseconds) that the information snooped will be sent")
+    protected long info_millis = default_info_millis;
+
+
     /**
 	 * Minimum capacity in bytes for a node. It is directly related with the size of the fragmentation packet.
 	 */
-    private long minimumCapacityInBytes;        
+    @Property(description="Minimum capacity in bytes for a node. It is directly related with the size of the fragmentation packet")
+    protected long minimumCapacityInBytes;
+
     /**
 	 * Minimum capacity in messages for a node. 
 	 */
-    private long minimumCapacityInMessages;    
+    @Property(description="Minimum capacity in messages for a node")
+    protected long minimumCapacityInMessages;
+
+
     /**
      * Thread that manages the periodic task.
      * @see UpdateTask#run()
@@ -66,8 +67,8 @@ public class BW_CALC extends Protocol {
     //////////////////////////// Calculated Values ////////////////////////////
     //////////////// All the values calculated are per second /////////////////
     
-    private long current_incoming_packets = 0;
-    private long current_incoming_bytes = 0;
+    private long current_incoming_packets;
+    private long current_incoming_bytes;
     private long max_incoming_packets = minimumCapacityInMessages;
     private long max_incoming_bytes = minimumCapacityInBytes;
     
@@ -78,44 +79,20 @@ public class BW_CALC extends Protocol {
     public Object down(Event evt) {
     	return down_prot.down(evt); // does not affect the message itself
     }
-    public Map<String, Object> dumpStats() {
-        Map<String, Object> retval = super.dumpStats();
-        if(retval == null)
-            retval=new HashMap<String, Object>();
-        retval.put("info_millis", this.info_millis);
-        return retval;
-    }
-	public final String getName() {
-        return BW_CALC.name;
-    }	
+
 	public void resetStats() {
         super.resetStats();
         this.info_millis = BW_CALC.default_info_millis;
-        if (this.scheduler != null) {
+        if (this.scheduler != null)
         	this.scheduler.cancel();
-        }
     }
-	public boolean setProperties(Properties props) {
-        String str;
-        
-        super.setProperties(props);
-        str=props.getProperty("info_millis");
-        if(str != null) {
-            this.info_millis=Long.parseLong(str);
-            props.remove("info_millis");
-        }
-        str=props.getProperty("minimumCapacityInBytes");
-        if(str != null) {
-            this.minimumCapacityInBytes=Long.parseLong(str);
-            props.remove("minimumCapacityInBytes");
-        }
-        str=props.getProperty("minimumCapacityInMessages");
-        if(str != null) {
-            this.minimumCapacityInMessages=Long.parseLong(str);
-            props.remove("minimumCapacityInMessages");
-        }
-        return true;
+
+    public void init() throws Exception {
+        super.init();
+        max_incoming_packets = minimumCapacityInMessages;
+        max_incoming_bytes = minimumCapacityInBytes;
     }
+
     public void start() throws Exception {
         super.start();
         if (this.scheduler == null) {
@@ -126,6 +103,7 @@ public class BW_CALC extends Protocol {
         }
         this.scheduler.scheduleAtFixedRate(task, this.getInfoMillis(), this.getInfoMillis());
     }
+
     public void stop() {
         super.stop();
         if (this.scheduler != null) {
@@ -134,22 +112,24 @@ public class BW_CALC extends Protocol {
     }    
     public Object up(Event evt) {
     	switch (evt.getType()) {
-    	// Set the default values to the local node before start the communication
-    	// with the other nodes in the network
+    	// Set the default values to the local node before start the communication with the other nodes in the network
 		case Event.SET_LOCAL_ADDRESS:
 			BwData bd = new BwData();
 			bd.setMaxIncomingBytes(minimumCapacityInBytes);
 			bd.setMaxIncomingPackets(minimumCapacityInMessages);
-			Message msg = new Message(null,null,bd);
-	    	msg.putHeader(name, BW_CALC.msg_header);
-	    	up_prot.up(evt);
-	    	return up_prot.up(new Event(Event.MSG, msg));			
-		default:
-	    	this.updateIncomingCurrentValues(evt); // this method MUST NOT affect in any way the event, just capture it
+			Message msg = new Message(null,bd);
+	    	msg.putHeader(Constants.BW_CALC_ID, BW_CALC.msg_header);
+            up_prot.up(msg);
     	}
     	return up_prot.up(evt); // does not affect the message itself
     }
-    
+
+    public Object up(Message msg) {
+        current_incoming_packets++;
+        current_incoming_bytes += msg.size();
+        return up_prot.up(msg);
+    }
+
     //	ACCESS METHODS --
     
     public long getInfoMillis() {
@@ -175,18 +155,13 @@ public class BW_CALC extends Protocol {
     	if (this.max_incoming_packets < this.minimumCapacityInMessages){
     		data.setMaxIncomingPackets(this.minimumCapacityInMessages);
     	}else data.setMaxIncomingPackets(this.max_incoming_packets);
-    	Message msg = new Message(null,null,data);
+    	Message msg = new Message(null,data);
     	// the same header for every message
-    	msg.putHeader(name, BW_CALC.msg_header);
-    	up_prot.up(new Event(Event.MSG, msg));
+    	msg.putHeader(Constants.BW_CALC_ID, BW_CALC.msg_header);
+    	up_prot.up(msg);
     	System.out.println("BW_CALC => " + data);
 	}    
-    private void updateIncomingCurrentValues(Event evt) {
-    	if(evt.getType() == Event.MSG){
-	    	current_incoming_packets++;
-	    	current_incoming_bytes += ((Message)evt.getArg()).size();
-    	}
-	}    
+
     
     //	INNER CLASSES --
     

@@ -1,19 +1,5 @@
 package urv.app.samples;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Paint;
-import java.awt.Rectangle;
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.Set;
-
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JPanel;
-
-import urv.machannel.MChannel;
-import edu.uci.ics.jung.graph.ArchetypeVertex;
 import edu.uci.ics.jung.graph.Edge;
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.Vertex;
@@ -22,19 +8,20 @@ import edu.uci.ics.jung.graph.decorators.VertexStringer;
 import edu.uci.ics.jung.graph.impl.DirectedSparseGraph;
 import edu.uci.ics.jung.io.PajekNetReader;
 import edu.uci.ics.jung.utils.Pair;
-import edu.uci.ics.jung.visualization.FRLayout;
-import edu.uci.ics.jung.visualization.GraphZoomScrollPane;
-import edu.uci.ics.jung.visualization.ISOMLayout;
-import edu.uci.ics.jung.visualization.Layout;
-import edu.uci.ics.jung.visualization.PluggableRenderer;
+import edu.uci.ics.jung.visualization.*;
 import edu.uci.ics.jung.visualization.SpringLayout;
-import edu.uci.ics.jung.visualization.StaticLayout;
-import edu.uci.ics.jung.visualization.VisualizationViewer;
 import edu.uci.ics.jung.visualization.contrib.CircleLayout;
 import edu.uci.ics.jung.visualization.contrib.KKLayout;
 import edu.uci.ics.jung.visualization.contrib.KKLayoutInt;
 import edu.uci.ics.jung.visualization.control.CrossoverScalingControl;
 import edu.uci.ics.jung.visualization.control.ScalingControl;
+import urv.machannel.MChannel;
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Set;
 
 /*
  * This class extends from jPanel, and it's a panel that contains a graph
@@ -52,7 +39,7 @@ public class GraphPanel extends JPanel {
 	private VisualizationViewer vv = null;
 	private Layout l = null;
 	
-	private MChannel groupChannel;
+	private final MChannel groupChannel;
 	private JPanel jPanel1;
 
 	/**
@@ -101,22 +88,30 @@ public class GraphPanel extends JPanel {
 	 */
 	private void changeLayout(){
 		String selection = (String)jComboBoxLayout.getSelectedItem();
-		
-		if(selection.equals("StaticLayout")){
-			l = new StaticLayout( netGraph );
-		}else if(selection.equals("SpringLayout")){
-			l = new SpringLayout( netGraph );
-		}else if(selection.equals("ISOMLayout")){
-			l = new ISOMLayout( netGraph );
-		}else if(selection.equals("KKLayoutInt")){
-			l = new KKLayoutInt( netGraph );
-		}else if(selection.equals("KKLayout")){
-			l = new KKLayout( netGraph );
-		}else if(selection.equals("FRLayout")){
-			l = new FRLayout( netGraph );
-		}else if(selection.equals("CircleLayout")){
-			l = new CircleLayout( netGraph );
-		}		
+
+		switch(selection) {
+			case "StaticLayout":
+				l=new StaticLayout(netGraph);
+				break;
+			case "SpringLayout":
+				l=new SpringLayout(netGraph);
+				break;
+			case "ISOMLayout":
+				l=new ISOMLayout(netGraph);
+				break;
+			case "KKLayoutInt":
+				l=new KKLayoutInt(netGraph);
+				break;
+			case "KKLayout":
+				l=new KKLayout(netGraph);
+				break;
+			case "FRLayout":
+				l=new FRLayout(netGraph);
+				break;
+			case "CircleLayout":
+				l=new CircleLayout(netGraph);
+				break;
+		}
 		vv.setGraphLayout(l);
 	}
 
@@ -178,17 +173,9 @@ public class GraphPanel extends JPanel {
 	 * EX: (n1,n2) == (n3,n4) if n1=n3 && n2=n4 || n1=n4 && n2=n3
 	 *  
 	 */
-	private boolean comparePairVertices(Pair p, Pair pTmp){
-		if(((Vertex)p.getFirst()).getUserDatum(PajekNetReader.LABEL).equals(((Vertex)pTmp.getFirst()).getUserDatum(PajekNetReader.LABEL)) &&
-				((Vertex)p.getSecond()).getUserDatum(PajekNetReader.LABEL).equals(((Vertex)pTmp.getSecond()).getUserDatum(PajekNetReader.LABEL))){
-				return true;
-		}
-		if(((Vertex)p.getFirst()).getUserDatum(PajekNetReader.LABEL).equals(((Vertex)pTmp.getSecond()).getUserDatum(PajekNetReader.LABEL)) &&
-				((Vertex)p.getSecond()).getUserDatum(PajekNetReader.LABEL).equals(((Vertex)pTmp.getFirst()).getUserDatum(PajekNetReader.LABEL))){
-				return true;
-		}
-		return false;
-	}	
+	private static boolean comparePairVertices(Pair p, Pair pTmp) {
+		return ((Vertex)p.getFirst()).getUserDatum(PajekNetReader.LABEL).equals(((Vertex)pTmp.getFirst()).getUserDatum(PajekNetReader.LABEL)) && ((Vertex)p.getSecond()).getUserDatum(PajekNetReader.LABEL).equals(((Vertex)pTmp.getSecond()).getUserDatum(PajekNetReader.LABEL)) || ((Vertex)p.getFirst()).getUserDatum(PajekNetReader.LABEL).equals(((Vertex)pTmp.getSecond()).getUserDatum(PajekNetReader.LABEL)) && ((Vertex)p.getSecond()).getUserDatum(PajekNetReader.LABEL).equals(((Vertex)pTmp.getFirst()).getUserDatum(PajekNetReader.LABEL));
+	}
 	/**
 	 * This method initializes getJButtonZoomMinus	
 	 * 	
@@ -199,11 +186,7 @@ public class GraphPanel extends JPanel {
 			jButtonZoomMinus = new JButton();
 			jButtonZoomMinus.setBounds(new Rectangle(243, 535, 41, 20));
 			jButtonZoomMinus.setText("-");
-			jButtonZoomMinus.addActionListener(new java.awt.event.ActionListener() {
-				public void actionPerformed(java.awt.event.ActionEvent e) {
-					scaler.scale(vv, 1/1.1f, vv.getCenter());
-				}
-			});
+			jButtonZoomMinus.addActionListener(e -> scaler.scale(vv, 1/1.1f, vv.getCenter()));
 		}
 		return jButtonZoomMinus;
 	}	
@@ -217,11 +200,7 @@ public class GraphPanel extends JPanel {
 			jButtonZoomPlus = new JButton();
 			jButtonZoomPlus.setBounds(new Rectangle(193, 535, 41, 20));
 			jButtonZoomPlus.setText("+");
-			jButtonZoomPlus.addActionListener(new java.awt.event.ActionListener() {
-				public void actionPerformed(java.awt.event.ActionEvent e) {
-					scaler.scale(vv, 1.1f, vv.getCenter());
-				}
-			});
+			jButtonZoomPlus.addActionListener(e -> scaler.scale(vv, 1.1f, vv.getCenter()));
 		}
 		return jButtonZoomPlus;
 	}	
@@ -238,11 +217,7 @@ public class GraphPanel extends JPanel {
 			jComboBoxLayout.setSelectedIndex(4);
 
 			jComboBoxLayout.setBounds(new Rectangle(5, 535, 172, 21));
-			jComboBoxLayout.addItemListener(new java.awt.event.ItemListener() {
-				public void itemStateChanged(java.awt.event.ItemEvent e) {
-					changeLayout();
-				}
-			});
+			jComboBoxLayout.addItemListener(e -> changeLayout());
 		}
 		return jComboBoxLayout;
 	}
@@ -278,12 +253,10 @@ public class GraphPanel extends JPanel {
 		vv.setPreferredSize(new Dimension(400, 560));
 		
 		//Labels for the nodes
-		VertexStringer vstringer = new VertexStringer(){
-			public String getLabel(ArchetypeVertex v) {
-				Object label = v.getUserDatum(PajekNetReader.LABEL);
-				return (String)label;
-			}
-        };        
+		VertexStringer vstringer =v -> {
+            Object label = v.getUserDatum(PajekNetReader.LABEL);
+            return (String)label;
+        };
         r.setVertexStringer(vstringer);		
         //how to paint the nodes
 		r.setVertexPaintFunction(new VertexPaintFunction(){
@@ -352,21 +325,9 @@ public class GraphPanel extends JPanel {
 		
 		/*============================ setup action listeners =================================*/
 		
-		jComboBoxLayout.addItemListener(new java.awt.event.ItemListener() {
-			public void itemStateChanged(java.awt.event.ItemEvent e) {
-				changeLayout();
-			}
-		});
+		jComboBoxLayout.addItemListener(e -> changeLayout());
 		
-		jButtonZoomPlus.addActionListener(new java.awt.event.ActionListener() {
-			public void actionPerformed(java.awt.event.ActionEvent e) {
-				scaler.scale(vv, 1.1f, vv.getCenter());
-			}
-		});
-		jButtonZoomMinus.addActionListener(new java.awt.event.ActionListener() {
-			public void actionPerformed(java.awt.event.ActionEvent e) {
-				scaler.scale(vv, 1/1.1f, vv.getCenter());
-			}
-		});
+		jButtonZoomPlus.addActionListener(e -> scaler.scale(vv, 1.1f, vv.getCenter()));
+		jButtonZoomMinus.addActionListener(e -> scaler.scale(vv, 1/1.1f, vv.getCenter()));
 	}
 }

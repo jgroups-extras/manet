@@ -1,31 +1,31 @@
 package org.jgroups.protocols;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.net.InetAddress;
-
+import org.jgroups.Global;
 import org.jgroups.Header;
-import org.jgroups.util.Streamable;
-
 import urv.olsr.data.OLSRNode;
 
-public class OLSRHeader extends Header implements Streamable{
+import java.io.*;
+import java.net.InetAddress;
+import java.util.function.Supplier;
+
+public class OLSRHeader extends Header {
 
 	public static final int CONTROL = 0;
-	public static final int DATA = 1;
+	public static final int DATA    = 1;
 	
-	public int type;
+	public int      type;
 	public OLSRNode dest;
-	public String mcastAddress;
+	public String   mcastAddress;
 	
 	public OLSRHeader() {
 		
 	}
 
-	/**
+    public short getMagicId() {
+        return Constants.OLSR_ID;
+    }
+
+    /**
 	 * @return the dest
 	 */
 	public OLSRNode getDest() {
@@ -45,30 +45,47 @@ public class OLSRHeader extends Header implements Streamable{
 	public int getType() {
 		return type;
 	}
-	
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		type = in.readInt();
-		if (type==DATA){
-			dest = new OLSRNode();
-			dest.readExternal(in);
+
+
+    public Supplier<? extends Header> create() {
+        return OLSRHeader::new;
+    }
+
+    public int serializedSize() {
+        int retval=Global.BYTE_SIZE; // type;
+        if(type == DATA)
+            retval+=dest.serializedSize() + Global.INT_SIZE;
+        return retval;
+    }
+
+	public void readFrom(DataInput in) throws Exception {
+        type = in.readByte();
+        if (type==DATA){
+            dest = new OLSRNode();
+            dest.readFrom(in);
+            byte[] addr = new byte[4];
+            for(int i=0;i<4;i++){
+                addr[i]=in.readByte();
+            }
+            mcastAddress = InetAddress.getByAddress(addr).getHostAddress();
 		}
 	}
 
-	public void readFrom(DataInputStream in) throws IOException, IllegalAccessException, InstantiationException {
-		type = in.readByte();
-		if (type==DATA){
-			dest = new OLSRNode();
-			dest.readFrom(in);
-			byte[] addr = new byte[4];
-			for(int i=0;i<4;i++){
-				addr[i]=in.readByte();
-			}
-			mcastAddress = InetAddress.getByAddress(addr).getHostAddress();
-		}
-	}
+    public void writeTo(DataOutput out) throws Exception {
+        out.writeByte(type);
+        if (type==DATA){
+            dest.writeTo(out);
+            byte[] addr = InetAddress.getByName(mcastAddress).getAddress();
+            for(int i=0;i<addr.length;i++){
+                out.writeByte(addr[i]);
+            }
+        }
+
+    }
+
 	
-	/**
-	 * @param dest the dest to set
+    /**
+     * @param dest the dest to set
 	 */
 	public void setDest(OLSRNode dest) {
 		this.dest = dest;
@@ -92,23 +109,5 @@ public class OLSRHeader extends Header implements Streamable{
         return "[OLSR: <variables> ]";
     }
 
-	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeInt(type);
-		if (type==DATA){
-			dest.writeExternal(out);
-		}
-	}
-
-	public void writeTo(DataOutputStream out) throws IOException {
-		out.writeByte(type);
-		if (type==DATA){
-			dest.writeTo(out);
-			byte[] addr = InetAddress.getByName(mcastAddress).getAddress();
-			for(int i=0;i<addr.length;i++){
-				out.writeByte(addr[i]);
-			}
-		}
-		
-	}
 
 }

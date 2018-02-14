@@ -1,9 +1,8 @@
 package urv.omolsr.core;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.jgroups.logging.Log;
+import org.jgroups.logging.LogFactory;
 import org.jgroups.protocols.OMOLSR;
-
 import urv.olsr.data.OLSRNode;
 import urv.omolsr.data.OMOLSRData;
 import urv.omolsr.data.OMOLSRNetworkGraph;
@@ -25,7 +24,7 @@ public class OMOLSRController {
 	 * overlay
 	 */
 	private OMOLSRData data = null;	
-	private Handler handler;
+	private final Handler handler;
 	protected final Log log = LogFactory.getLog(this.getClass());
 	
 	//	CONSTRUCTORS --
@@ -45,9 +44,7 @@ public class OMOLSRController {
 		data.computeMST();
 	}	
 	/**
-	 * Registers a new instance of the OMOLSR protocol to the multicast
-	 * address
-	 * @param groupId The multicast address of the group
+	 * Registers a new instance of the OMOLSR protocol to the multicast address
 	 * @param protocol An instance of the OMOLSR protocol
 	 */
 	public void registerOmolsrProtocol(OMOLSR protocol){

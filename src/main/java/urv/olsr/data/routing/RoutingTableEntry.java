@@ -34,7 +34,7 @@ public class RoutingTableEntry {
 	//	OVERRIDDEN METHODS --
 	
 	public Object clone(){		
-		return new RoutingTableEntry((OLSRNode)destAddr.clone(),(OLSRNode)nextAddr.clone(),hops);
+		return new RoutingTableEntry((OLSRNode)destAddr.copy(), (OLSRNode)nextAddr.copy(), hops);
 	}
 	
 	//	ACESS METHODS --

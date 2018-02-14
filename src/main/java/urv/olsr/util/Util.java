@@ -20,7 +20,7 @@ public class Util {
 	public static OLSRSet copyNodeSet(OLSRSet originalSet){		
 		OLSRSet clonedSet = new OLSRSet();		
 		for (OLSRNode node:originalSet){
-			clonedSet.add((OLSRNode)node.clone());
+			clonedSet.add((OLSRNode)node.copy());
 		}
 		return clonedSet;
 	}

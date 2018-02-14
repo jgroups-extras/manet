@@ -10,6 +10,7 @@ import java.util.HashSet;
  * @author Marcel Arrufat Arias
  */
 public class HashMapSet<K,V> extends HashMap<K,HashSet<V>>{
+	private static final long serialVersionUID=4933870953249705853L;
 
 	//	CONSTRUCTORS --
 	
@@ -26,7 +27,7 @@ public class HashMapSet<K,V> extends HashMap<K,HashSet<V>>{
 	 */
 	public void addToSet(K key,V value){
 		
-		HashSet<V> l = (HashSet<V>)this.get(key);
+		HashSet<V> l =this.get(key);
 		if (l==null) l = new HashSet<V>();
 		l.add(value);
 		this.put(key,l);
@@ -38,13 +39,9 @@ public class HashMapSet<K,V> extends HashMap<K,HashSet<V>>{
 	 * @param value
 	 * @return
 	 */
-	public boolean existsInList(K key, V value){
-		HashSet<V> l = this.get(key);
-		if (l==null){
-			return false;
-		} else {
-			return l.contains(value);
-		}
+	public boolean existsInList(K key, V value) {
+		HashSet<V> l=this.get(key);
+		return l != null && l.contains(value);
 	}
 	/**
 	 * Returns the whole set from a given key
@@ -77,7 +74,7 @@ public class HashMapSet<K,V> extends HashMap<K,HashSet<V>>{
 	 * @param value
 	 */
 	public void removeFromSet(K key,V value){
-		HashSet<V> l = (HashSet<V>)this.get(key);
+		HashSet<V> l =this.get(key);
 		if (l!=null){
 			l.remove(value);
 			this.put(key,l);

@@ -27,7 +27,7 @@ public class DuplicateTableEntry implements Cloneable{
 	//	OVERRIDDEN METHODS --
 	
 	public Object clone(){
-		return new DuplicateTableEntry((OLSRNode)this.originatorAddr.clone(),(SequenceNumber)this.msgSeqNum.clone());
+		return new DuplicateTableEntry((OLSRNode)this.originatorAddr.copy(), (SequenceNumber)this.msgSeqNum.clone());
 	}
 	/**
 	 * Checks whether two entries are equal

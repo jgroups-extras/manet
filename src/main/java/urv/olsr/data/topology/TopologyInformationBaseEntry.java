@@ -34,7 +34,7 @@ public class TopologyInformationBaseEntry {
 	//	OVERRIDDEN METHODS --
 	
 	public Object clone(){		
-		return new TopologyInformationBaseEntry((OLSRNode)originator.clone(),(OLSRNode)advertisedNode.clone(),(SequenceNumber)seqNum.clone());
+		return new TopologyInformationBaseEntry((OLSRNode)originator.copy(), (OLSRNode)advertisedNode.copy(), (SequenceNumber)seqNum.clone());
 	}
 	public String toString(){		
 		return seqNum.toString();

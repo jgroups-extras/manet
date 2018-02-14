@@ -1,51 +1,19 @@
-// $Id: Draw.java,v 1.45 2007/06/19 10:27:39 belaban Exp $
-
 
 package urv.app.samples;
 
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Image;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionListener;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Random;
-
-import javax.management.MBeanServer;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-
-import org.jgroups.Address;
-import org.jgroups.Channel;
-import org.jgroups.ChannelListener;
-import org.jgroups.ExtendedReceiverAdapter;
-import org.jgroups.JChannel;
-import org.jgroups.MergeView;
-import org.jgroups.Message;
-import org.jgroups.View;
+import org.jgroups.*;
 import org.jgroups.jmx.JmxConfigurator;
 import org.jgroups.util.Util;
-
 import urv.machannel.ChannelGenerator;
 import urv.machannel.MChannel;
+
+import javax.management.MBeanServer;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.util.*;
 
 
 /**
@@ -53,11 +21,10 @@ import urv.machannel.MChannel;
  * mouse moves are broadcast to all group members, which then apply them to their canvas<p>
  * @author Bela Ban, Oct 17 2001
  */
-public class Draw extends ExtendedReceiverAdapter implements ActionListener, ChannelListener {
+public class Draw extends ReceiverAdapter implements ActionListener {
     String                         groupname="DrawGroupDemo";    
     private MChannel               channel=null;
     private int                    member_size=1;
-    static final boolean           first=true;
     private JFrame                 mainFrame=null;
     private JPanel                 sub_panel=null;
     private DrawPanel              panel=null;
@@ -69,14 +36,12 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
     boolean                        no_channel=false;
     boolean                        jmx;
     private boolean                use_state=false;
-    private long                   state_timeout=5000;
 
 
-    public Draw(String props, boolean no_channel, boolean jmx, boolean use_state, long state_timeout) throws Exception {
+    public Draw(boolean no_channel, boolean jmx, boolean use_state) throws Exception {
         this.no_channel=no_channel;
         this.jmx=jmx;
         this.use_state=use_state;
-        this.state_timeout=state_timeout;
         if(no_channel)
             return;
 
@@ -118,20 +83,17 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
 
    public static void main(String[] args) {
        Draw             draw=null;
-       String           props=null;
        boolean          no_channel=false;
        boolean          jmx=false;
        boolean          use_state=false;
        String           group_name=null;
-       long             state_timeout=5000;
 
-        for(int i=0; i < args.length; i++) {
+       for(int i=0; i < args.length; i++) {
             if("-help".equals(args[i])) {
                 help();
                 return;
             }
             if("-props".equals(args[i])) {
-                props=args[++i];
                 continue;
             }
             if("-no_channel".equals(args[i])) {
@@ -151,7 +113,6 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
                 continue;
             }
             if("-timeout".equals(args[i])) {
-                state_timeout=Long.parseLong(args[++i]);
                 continue;
             }
 
@@ -160,7 +121,7 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
         }
 
         try {
-            draw=new Draw(props, no_channel, jmx, use_state, state_timeout);
+            draw=new Draw(no_channel, jmx, use_state);
             if(group_name != null)
                 draw.setGroupName(group_name);
             draw.go();
@@ -204,7 +165,7 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
 
         }
         mainFrame=new JFrame();
-        mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        mainFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         panel=new DrawPanel(use_state);
         panel.setBackground(background_color);
         sub_panel=new JPanel();
@@ -266,7 +227,7 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
         }
 
         try {
-            DrawCommand comm=(DrawCommand)Util.streamableFromByteBuffer(DrawCommand.class, buf, msg.getOffset(), msg.getLength());
+            DrawCommand comm=Util.streamableFromByteBuffer(DrawCommand.class, buf, msg.getOffset(), msg.getLength());
             switch(comm.mode) {
                 case DrawCommand.DRAW:
                     if(panel != null)
@@ -351,12 +312,11 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
     }
 
     public void sendClearPanelMsg() {
-        int                  tmp[]=new int[1]; tmp[0]=0;
         DrawCommand          comm=new DrawCommand(DrawCommand.CLEAR);
 
         try {
             byte[] buf=Util.streamableToByteBuffer(comm);
-            channel.send(new Message(null, null, buf));
+            channel.send(new Message(null, buf));
         }
         catch(Exception ex) {
             System.err.println(ex);
@@ -395,33 +355,6 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
     }
 
 
-    /* ------------------------------ ChannelListener interface -------------------------- */
-
-    public void channelConnected(Channel channel) {
-
-    }
-
-    public void channelDisconnected(Channel channel) {
-
-    }
-
-    public void channelClosed(Channel channel) {
-
-    }
-
-    public void channelShunned() {
-        System.out.println("-- received EXIT, waiting for ChannelReconnected callback");
-        setTitle(" Draw Demo - shunned ");
-    }
-
-    public void channelReconnected(Address addr) {
-        setTitle();
-    }
-
-
-    /* --------------------------- End of ChannelListener interface ---------------------- */
-
-
 
     private class DrawPanel extends JPanel implements MouseMotionListener {
         final Dimension         preferred_size=new Dimension(235, 170);
@@ -433,7 +366,7 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
 
         public DrawPanel(boolean use_state) {
             if(use_state)
-                state=new LinkedHashMap<Point,Color>();
+                state=new LinkedHashMap<>();
             else
                 state=null;
             createOffscreenImage(false);
@@ -465,7 +398,7 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
         public void setState(byte[] buf) {
             synchronized(state) {
                 try {
-                    Map<Point,Color> tmp=(Map<Point,Color>)Util.objectFromByteBuffer(buf);
+                    Map<Point,Color> tmp=Util.objectFromByteBuffer(buf);
                     state.clear();
                     state.putAll(tmp);
                     System.out.println("received state: " + buf.length + " bytes, " + state.size() + " entries");
@@ -499,7 +432,7 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
 
         public void readState(InputStream instream) throws IOException {
             DataInputStream in=new DataInputStream(instream);
-            Map<Point,Color> new_state=new HashMap<Point,Color>();
+            Map<Point,Color> new_state=new HashMap<>();
             int num=in.readInt();
             Point point;
             Color col;
@@ -556,8 +489,7 @@ public class Draw extends ExtendedReceiverAdapter implements ActionListener, Cha
 
             try {
                 byte[] buf=Util.streamableToByteBuffer(comm);
-                channel.send(new Message(null, null, buf));
-                Thread.yield();
+                channel.send(new Message(null, buf));
             }
             catch(Exception ex) {
                 System.err.println(ex);

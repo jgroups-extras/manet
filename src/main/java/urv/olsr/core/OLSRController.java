@@ -1,11 +1,7 @@
 package urv.olsr.core;
 
-import java.net.InetAddress;
-import java.util.Hashtable;
-
 import org.jgroups.Message;
 import org.jgroups.stack.IpAddress;
-
 import urv.conf.ApplicationConfig;
 import urv.conf.PropertiesLoader;
 import urv.emulator.EmulationNeighborData;
@@ -23,19 +19,15 @@ import urv.olsr.data.routing.RoutingTableEntry;
 import urv.olsr.data.topology.TopologyInformationBaseTable;
 import urv.olsr.handlers.HelloMessageHandler;
 import urv.olsr.handlers.TcMessageHandler;
-import urv.olsr.mcast.TopologyInformationSender;
 import urv.olsr.mcast.MulticastGroupsTable;
 import urv.olsr.mcast.MulticastNetworkGraph;
 import urv.olsr.mcast.MulticastNetworkGraphComputationController;
-import urv.olsr.message.HelloMessage;
-import urv.olsr.message.OLSRMessage;
-import urv.olsr.message.OLSRMessageSender;
-import urv.olsr.message.OLSRMessageUpper;
-import urv.olsr.message.OLSRPacket;
-import urv.olsr.message.OLSRPacketFactory;
-import urv.olsr.message.TcMessage;
-import urv.util.graph.NetworkGraph;
-import urv.util.graph.Weight;
+import urv.olsr.mcast.TopologyInformationSender;
+import urv.olsr.message.*;
+
+import java.net.InetAddress;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class contains all necessary structures to
@@ -48,11 +40,11 @@ public class OLSRController implements TopologyInformationSender{
 	//	CLASS FIELDS --
 	
 	// Static variable to store different instances of the controller (for emulation purposes)
-	private static Hashtable<OLSRNode,OLSRController> table = new Hashtable<OLSRNode,OLSRController>();	
+	private static final Map<OLSRNode,OLSRController> table = new HashMap<>();
 	
-	private Hashtable<String,OLSRMessageUpper> olsrUpperTable = new Hashtable<String,OLSRMessageUpper>();		
-	private OLSRNode localNode;
-	private OLSRMessageSender messageSender;		
+	private final Map<String,OLSRMessageUpper> olsrUpperTable = new HashMap<>();
+	private final OLSRNode localNode;
+	private final OLSRMessageSender messageSender;
 	//Handlers
 	private HelloMessageHandler helloMessageHandler;
 	private TcMessageHandler tcMessageHandler;	
@@ -74,7 +66,7 @@ public class OLSRController implements TopologyInformationSender{
 	private MprComputationController mprComputationController;
 	private RoutingTableComputationController routingTableComputationController;
 	private MulticastNetworkGraphComputationController multicastNetworkGraphComputationController;
-	private Log log = Log.getInstance();
+	private final Log log = Log.getInstance();
 	
 	//	CONSTRUCTORS --
 	
@@ -106,9 +98,9 @@ public class OLSRController implements TopologyInformationSender{
 	 * This methods is used to send topology events to the above layer.
 	 */
 	public void sendTopologyInformationEvent() {
-		for (String mcastAddr : olsrUpperTable.keySet()){
-			OLSRMessageUpper upper = olsrUpperTable.get(mcastAddr);
-			upper.passUpdateEvent((NetworkGraph<OLSRNode, Weight>) multicastNetworkGraph.computeContractedGraph(mcastAddr), routingTable);
+		for (Map.Entry<String,OLSRMessageUpper> stringOLSRMessageUpperEntry : olsrUpperTable.entrySet()){
+			OLSRMessageUpper upper =stringOLSRMessageUpperEntry.getValue();
+			upper.passUpdateEvent(multicastNetworkGraph.computeContractedGraph(stringOLSRMessageUpperEntry.getKey()), routingTable);
 		}		
 		//An UpdateEvent is a periodic result of catching and computing all topology information
 		//for a while. After take the result, call to the garbage collector to improve the use of memory
@@ -341,12 +333,12 @@ public class OLSRController implements TopologyInformationSender{
 			DuplicateTableEntry newEntry = new DuplicateTableEntry(originator,seqNumber);
 			
 			// TODO update expiring time
-			duplicateTable.addEntryWithTimestamp(newEntry, new Boolean(willRetransmit), DuplicateTable.DUP_HOLD_TIME);
+			duplicateTable.addEntryWithTimestamp(newEntry, willRetransmit, DuplicateTable.DUP_HOLD_TIME);
 			// Retransmission
 			if (willRetransmit){
 				olsrPacket.decreaseTtl();
 				olsrPacket.increaseHopCount();				
-				Message msg = new Message(ApplicationConfig.BROADCAST_ADDRESS,null,olsrPacket);
+				Message msg = new Message(ApplicationConfig.BROADCAST_ADDRESS,olsrPacket);
 				messageSender.sendControlMessage(msg);
 				return true;
 			}
@@ -387,19 +379,19 @@ public class OLSRController implements TopologyInformationSender{
 		this.olsrPacketFactory = new OLSRPacketFactory(localNode);
 		
 		// Registering loggable classes
-		Log log = Log.getInstance();
-		log.registerLoggable(this.neighborTable.getClass().getName(), this.neighborTable);
-		log.registerLoggable(this.routingTable.getClass().getName(), this.routingTable);
-		log.registerLoggable(this.topologyTable.getClass().getName(), this.topologyTable);
-		log.registerLoggable(this.mprSet.getClass().getName(), this.mprSet);
-		log.registerLoggable(this.multicastNetworkGraph.getClass().getName(), this.multicastNetworkGraph);
-		log.registerLoggable(this.multicastGroupsTable.getClass().getName(),this.multicastGroupsTable);
+		Log logger = Log.getInstance();
+		logger.registerLoggable(this.neighborTable.getClass().getName(), this.neighborTable);
+		logger.registerLoggable(this.routingTable.getClass().getName(), this.routingTable);
+		logger.registerLoggable(this.topologyTable.getClass().getName(), this.topologyTable);
+		logger.registerLoggable(this.mprSet.getClass().getName(), this.mprSet);
+		logger.registerLoggable(this.multicastNetworkGraph.getClass().getName(), this.multicastNetworkGraph);
+		logger.registerLoggable(this.multicastGroupsTable.getClass().getName(),this.multicastGroupsTable);
 		
 		// Periodic thread
-		this.olsrThread = new OLSRThread(messageSender,neighborTable,mprComputationController,
-				routingTableComputationController,mprSelectorSet,olsrPacketFactory,
-				topologyTable,duplicateTable,(TopologyInformationSender)this,
-				multicastNetworkGraphComputationController,multicastGroupsTable,localNode);
+		this.olsrThread = new OLSRThread(messageSender, neighborTable, mprComputationController,
+										 routingTableComputationController, mprSelectorSet, olsrPacketFactory,
+										 topologyTable, duplicateTable, this,
+										 multicastNetworkGraphComputationController, multicastGroupsTable, localNode);
 		this.olsrThread.start();		
 	}
 	/**

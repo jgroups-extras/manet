@@ -94,7 +94,7 @@ public class RoutingTable implements Loggable, BandwidthUpdatable{
 		Hashtable<OLSRNode,RoutingTableEntry> newRoutingTable = new Hashtable<OLSRNode,RoutingTableEntry>();
 		synchronized (lock) {			
 			for (OLSRNode node:tmpRoutingTable.routingTable.keySet()){
-				newRoutingTable.put((OLSRNode)node.clone(),(RoutingTableEntry)tmpRoutingTable.routingTable.get(node).clone());
+				newRoutingTable.put((OLSRNode)node.copy(), (RoutingTableEntry)tmpRoutingTable.routingTable.get(node).clone());
 			}
 			//Change the reference of the object
 			this.routingTable = newRoutingTable;

@@ -1,19 +1,18 @@
 package urv.omolsr.core;
 
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.Set;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.jgroups.Event;
 import org.jgroups.Message;
+import org.jgroups.logging.Log;
+import org.jgroups.logging.LogFactory;
 import org.jgroups.protocols.OMOLSR;
 import org.jgroups.protocols.OMOLSRHeader;
-
 import urv.olsr.data.OLSRNode;
 import urv.omolsr.data.OMOLSRData;
 import urv.util.graph.HashMapSet;
+
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Set;
 
 /**
  * This class process all OMOLSR received messages (DATA and CONTROL messages).
@@ -22,14 +21,13 @@ import urv.util.graph.HashMapSet;
  * @author Marcel Arrufat Arias
  *
  */
-public class StandardHandler implements Handler{
+public class StandardHandler implements Handler {
 
 	//	CLASS FIELDS --
-	
-	private OMOLSRData data;
-	private OLSRNode localOLSRNode;
-	private Hashtable broadcastMinNeigbour = new Hashtable();
-	private OMOLSR protocolCallback;
+	private final OMOLSRData data;
+	private final OLSRNode localOLSRNode;
+	private final Hashtable broadcastMinNeigbour = new Hashtable();
+	private final OMOLSR protocolCallback;
 	protected final Log log = LogFactory.getLog(this.getClass());
 
 	//	CONSTRUCTORS --
@@ -87,6 +85,7 @@ public class StandardHandler implements Handler{
 	public void registerBroadcastMinNeighbour(String groupId, int num){
 		broadcastMinNeigbour.put(groupId,new Integer(num));
 	}
+
 	private String getProtocolName(){
 		return "OMOLSR";
 	}

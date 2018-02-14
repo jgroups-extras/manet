@@ -116,7 +116,7 @@ public class NeighborTable extends ExpiringEntryTable<OLSRNode,NeighborTableEntr
 			for (OLSRNode node:this.keySet()){
 				NeighborTableEntry entry = getEntry(node);
 				
-				map.addToSet((LinkCode)(entry.getLinkCode().clone()),(OLSRNode)node.clone()); 
+				map.addToSet((LinkCode)(entry.getLinkCode().clone()),(OLSRNode)node.copy());
 			}
 		}
 		HelloMessage hm = new HelloMessage(map);
@@ -138,7 +138,7 @@ public class NeighborTable extends ExpiringEntryTable<OLSRNode,NeighborTableEntr
 		OLSRSet copy = new OLSRSet();
 		synchronized (super.getLock()) {
 			for(OLSRNode node:this.keySet()){
-				copy.add((OLSRNode)node.clone());
+				copy.add((OLSRNode)node.copy());
 			}
 		}
 		return copy;
@@ -154,7 +154,7 @@ public class NeighborTable extends ExpiringEntryTable<OLSRNode,NeighborTableEntr
 			for(OLSRNode node:this.keySet()){
 				LinkCode status = this.getEntry(node).getLinkCode();
 				if (status.getNeighborType()==LinkCode.MPR_NEIGH || status.getNeighborType()==LinkCode.SYM_NEIGH)
-					copy.add((OLSRNode)node.clone());
+					copy.add((OLSRNode)node.copy());
 			}
 		}
 		return copy;

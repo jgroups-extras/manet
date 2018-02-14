@@ -61,7 +61,7 @@ public class MulticastNetworkGraph implements Loggable, BandwidthUpdatable{
 		MulticastNetworkGraph newGraph = new MulticastNetworkGraph();				
 		newGraph.graph = (NetworkGraph<OLSRNode,Weight>)this.graph.clone();
 		newGraph.multicastGroupsTable = (MulticastGroupsTable)this.multicastGroupsTable.clone();
-		newGraph.localNode = (OLSRNode)this.localNode.clone();		
+		newGraph.localNode = (OLSRNode)this.localNode.copy();
 		return newGraph;
 	}	
 	

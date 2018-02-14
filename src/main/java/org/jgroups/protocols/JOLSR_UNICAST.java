@@ -39,8 +39,8 @@ import org.jgroups.util.Util;
  * (unless already existing). Msgs will then be added to hashtable.peer_addr.received_msgs.<p> This
  * layer is used to reliably transmit point-to-point messages, that is, either messages sent to a
  * single receiver (vs. messages multicast to a group) or for example replies to a multicast message. The 
- * sender uses an <code>AckSenderWindow</code> which retransmits messages for which it hasn't received
- * an ACK, the receiver uses <code>AckReceiverWindow</code> which keeps track of the lowest seqno
+ * sender uses an {@code AckSenderWindow} which retransmits messages for which it hasn't received
+ * an ACK, the receiver uses {@code AckReceiverWindow} which keeps track of the lowest seqno
  * received so far, and keeps messages in order.<p>
  * Messages in both AckSenderWindows and AckReceiverWindows will be removed. A message will be removed from
  * AckSenderWindow when an ACK has been received for it and messages will be removed from AckReceiverWindow
@@ -51,8 +51,8 @@ import org.jgroups.util.Util;
 public class JOLSR_UNICAST extends Protocol implements AckSenderWindow.RetransmitCommand {
     private final static String name="JOLSR_UNICAST";
     private static final long DEFAULT_FIRST_SEQNO=1;
-    private final Vector<Address> members=new Vector<Address>(11);
-    private final HashMap<Address,Entry> connections=new HashMap<Address,Entry>(11);
+    private final Vector<Address> members=new Vector<>(11);
+    private final HashMap<Address,Entry> connections=new HashMap<>(11);
     private long[]                timeout={400,800,1600,3200};  // for AckSenderWindow: max time to wait for missing acks
     private Address               local_addr=null;
 
@@ -182,17 +182,17 @@ public class JOLSR_UNICAST extends Protocol implements AckSenderWindow.Retransmi
     }
 
     public Map<String, Object> dumpStats() {
-        Map<String,Object> m=new HashMap<String,Object>();
-        m.put("num_msgs_sent", new Long(num_msgs_sent));
-        m.put("num_msgs_received", new Long(num_msgs_received));
-        m.put("num_bytes_sent", new Long(num_bytes_sent));
-        m.put("num_bytes_received", new Long(num_bytes_received));
-        m.put("num_acks_sent", new Long(num_acks_sent));
-        m.put("num_acks_received", new Long(num_acks_received));
-        m.put("num_xmit_requests_received", new Long(num_xmit_requests_received));
-        m.put("num_unacked_msgs", new Long(getNumberOfUnackedMessages()));
+        Map<String,Object> m=new HashMap<>();
+        m.put("num_msgs_sent", num_msgs_sent);
+        m.put("num_msgs_received", num_msgs_received);
+        m.put("num_bytes_sent", num_bytes_sent);
+        m.put("num_bytes_received", num_bytes_received);
+        m.put("num_acks_sent", num_acks_sent);
+        m.put("num_acks_received", num_acks_received);
+        m.put("num_xmit_requests_received", num_xmit_requests_received);
+        m.put("num_unacked_msgs", (long)getNumberOfUnackedMessages());
         m.put("unacked_msgs", getUnackedMessages());
-        m.put("num_msgs_in_recv_windows", new Long(getNumberOfMessagesInReceiveWindows()));
+        m.put("num_msgs_in_recv_windows", (long)getNumberOfMessagesInReceiveWindows());
         return m;
     }
     public String getLocalAddress() {return local_addr != null? local_addr.toString() : "null";}
@@ -513,8 +513,8 @@ public class JOLSR_UNICAST extends Protocol implements AckSenderWindow.Retransmi
 
 
     /**
-     * Check whether the hashtable contains an entry e for <code>sender</code> (create if not). If
-     * e.received_msgs is null and <code>first</code> is true: create a new AckReceiverWindow(seqno) and
+     * Check whether the hashtable contains an entry e for {@code sender} (create if not). If
+     * e.received_msgs is null and {@code first} is true: create a new AckReceiverWindow(seqno) and
      * add message. Set e.received_msgs to the new window. Else just add the message.
      * @return boolean True if we can send an ack, false otherwise
      */

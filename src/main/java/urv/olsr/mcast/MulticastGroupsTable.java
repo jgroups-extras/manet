@@ -65,7 +65,7 @@ public class MulticastGroupsTable implements Loggable, BandwidthUpdatable{
 			Set<OLSRNode> groupMembers = new HashSet<OLSRNode>();
 			for (OLSRNode node : table.keySet()){
 				if (table.get(node).contains(mcastAddress)){
-					groupMembers.add((OLSRNode)node.clone());
+					groupMembers.add((OLSRNode)node.copy());
 				}
 			}
 			return groupMembers;
