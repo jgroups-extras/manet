@@ -20,8 +20,24 @@
 
     <developers>
         <developer>
-            <name>Pedro Antonio García López</name>
+            <name>Pedro García</name>
             <email>pedro.garcia@urv.cat</email>
+        </developer>
+        <developer>
+            <name>Marcel Arrufat</name>
+            <email>marcel.arrufat@urv.cat</email>
+        </developer>
+        <developer>
+            <name>Gerard Paris</name>
+            <email>gerard.paris@urv.cat</email>
+        </developer>
+        <developer>
+            <name>Raul Gracia</name>
+            <email>raul.gracia@urv.cat</email>
+        </developer>
+        <developer>
+            <name>Marc Espelt</name>
+            <email>marc.espelt@urv.cat</email>
         </developer>
         <developer>
             <name>Bela Ban</name>
@@ -55,9 +71,13 @@
 
     <properties>
         <version.jgroups>4.0.10.Final</version.jgroups>
-        <version.jung>1.7.6</version.jung>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+
+        <version.jgroups>2.5.2</version.jgroups>
+        <version.jung>1.7.6</version.jung>
+        <version.commons-logging>1.2</version.commons-logging>
+        <version.log4j>1.2.16</version.log4j>
 
         <!-- nexus-staging-maven-plugin -->
         <autoReleaseAfterClose>true</autoReleaseAfterClose>
@@ -132,26 +152,6 @@
             <groupId>org.jgroups</groupId>
             <artifactId>jgroups</artifactId>
             <version>${version.jgroups}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-            <version>[2.0,)</version>
-            <optional>true</optional>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <version>[2.0,)</version>
-            <optional>true</optional>
-        </dependency>
-
-        <dependency>
-            <groupId>jung</groupId>
-            <artifactId>jung</artifactId>
-            <version>${version.jung}</version>
         </dependency>
 
     </dependencies>
