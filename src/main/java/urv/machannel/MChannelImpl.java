@@ -1,22 +1,8 @@
 package urv.machannel;
 
-import java.io.Serializable;
-import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.jgroups.Address;
-import org.jgroups.Channel;
-import org.jgroups.ChannelClosedException;
-import org.jgroups.ChannelNotConnectedException;
-import org.jgroups.Message;
-import org.jgroups.MessageListener;
-import org.jgroups.Transport;
-import org.jgroups.View;
-import org.jgroups.blocks.PullPushAdapter;
+import org.jgroups.*;
 import org.jgroups.stack.IpAddress;
 import org.jgroups.util.Util;
-
 import urv.conf.PropertiesLoader;
 import urv.emulator.core.EmulationController;
 import urv.emulator.tasks.GroupMembershipNotifier;
@@ -27,6 +13,11 @@ import urv.olsr.mcast.MulticastAddress;
 import urv.olsr.mcast.TopologyEvent;
 import urv.util.graph.NetworkGraph;
 import urv.util.graph.Weight;
+
+import java.io.Serializable;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class provides an implementation of the MChannel interface
@@ -39,27 +30,30 @@ import urv.util.graph.Weight;
  * @version $Revision
 
  */
-public class MChannelImpl extends PullPushAdapter implements MChannel {
+public class MChannelImpl extends ReceiverAdapter implements MChannel {
 		
 	//	CLASS FIELDS --
 
 	//Multicast address for this MChannel instance
-	private MulticastAddress mcastAddr;
+	private final MulticastAddress mcastAddr;
 	//Channel Name
-	private String channelId;
+	private final String channelId;
+	private final JChannel channel;
 	//Graph that represents the underlying topology
-	private NetworkGraph<OLSRNode,Weight> graph = new NetworkGraph<OLSRNode, Weight>();
+	private NetworkGraph<OLSRNode,Weight> graph =new NetworkGraph<>();
     private View view;
 	private EmulationController controller;
 	private MessageNotifier notifier;	
 	private GroupMembershipNotifier groupMembershipInformation;
-	private int seqNumber=0;
+	private int seqNumber;
+	private MessageListener listener;
+	private MembershipListener membership_listener;
 	
     //	CONSTRUCTORS --
 		
-	public MChannelImpl(Transport channel, MulticastAddress mcastAddr, String channelName, EmulationController controller){
+	public MChannelImpl(JChannel channel, MulticastAddress mcastAddr, String channelName, EmulationController controller){
 		//In the super constructor is started the channel, because is called the start() method
-		super(channel);
+		this.channel=channel;
 		this.channelId = channelName;
 		this.mcastAddr = mcastAddr;
     	if (PropertiesLoader.isEmulated()){
@@ -67,67 +61,36 @@ public class MChannelImpl extends PullPushAdapter implements MChannel {
     		this.notifier = this.controller.getMessageNotifier();
     		this.groupMembershipInformation = this.controller.getGroupMembershipNotifier();
 	    	groupMembershipInformation.newGroupJoined(
-	    		mcastAddr.toInetAddress(),getInetAddress(((Channel) transport).getLocalAddress()),this);
+              mcastAddr.toInetAddress(), getInetAddress(channel.getAddress()), this);
 	    }
 	}
 
 	//	OVERRIDDEN METHODS --	
 	
 	@Override
-	public Address getLocalAddress(){
-		return ((Channel) transport).getLocalAddress();
-	}
+	public Address getLocalAddress() {return channel.getAddress();}
 	@Override
 	public NetworkGraph<OLSRNode,Weight> getNetworkGraph(){
 		return graph;
 	}
 	@Override
-	public synchronized View getView() {
-		return (view == null) ? null : (View) view.clone();
-	}
+	public synchronized View getView() {return view;}
 	@Override
 	public String getChannelName() {
 		return channelId;
 	}
-	
-    /**
-     * Reentrant run(): message reception is serialized, then the listener is notified of the
-     * message reception
-     */
-	@Override
-    public void run() {
-        Object obj;
-        while(receiver_thread != null && Thread.currentThread().equals(receiver_thread)) {
-            try {
-                obj=transport.receive(0);
-                if(obj == null)
-                    continue;
-                //If we receive information about the current topology
-                //store this info
-                if(obj instanceof Message) {
-                	//Change, we intercept seq Numbers
-                    super.handleMessage(getReceivedMessage((Message)obj));
-	            } else if(obj instanceof View) {
-                    notifyViewChange((View)obj);
-                }
-            }catch(ChannelNotConnectedException conn) {
-                Address local_addr=((Channel)transport).getLocalAddress();
-                if(log.isTraceEnabled()) log.trace('[' + (local_addr == null ? "<null>" : local_addr.toString()) +
-                        "] channel not connected, exception is " + conn);
-                Util.sleep(1000);
-                receiver_thread=null;
-                break;
-            }catch(ChannelClosedException closed_ex) {
-                Address local_addr=((Channel)transport).getLocalAddress();
-                if(log.isTraceEnabled()) log.trace('[' + (local_addr == null ? "<null>" : local_addr.toString()) +
-                        "] channel closed, exception is " + closed_ex);
-                receiver_thread=null;
-                break;
-            }
-            catch(Throwable e) {}
-        }
-    }	
-	
+
+
+    public void receive(Message msg) {
+        if(listener != null)
+            listener.receive(msg);
+    }
+
+    public void viewAccepted(View view) {
+        notifyViewChange(view);
+    }
+
+
     /* **********************************************
      * 				 MESSAGE DELIVERY
      * ********************************************/
@@ -138,7 +101,7 @@ public class MChannelImpl extends PullPushAdapter implements MChannel {
 	@Override
 	public void send(Message msg) {
 		try {
-			send(channelId,msg);
+			channel.send(msg);
 		} catch (Exception e) {
 			System.err.println("Could not send message "+msg);
 			e.printStackTrace();
@@ -149,9 +112,9 @@ public class MChannelImpl extends PullPushAdapter implements MChannel {
      */
 	@Override
 	public void send(Address dst, Address src, Serializable content) {
-		Message msg=createMessage(dst,content);
+		Message msg=createMessage(dst,content).setSrc(src);
 		try {
-			send(channelId,msg);
+			channel.send(msg);
 		} catch (Exception e) {
 			System.err.println("Could not send message "+msg);
 			e.printStackTrace();
@@ -177,7 +140,7 @@ public class MChannelImpl extends PullPushAdapter implements MChannel {
 	}
 	@Override
 	public synchronized List<InetAddress> getInetAddressesOfGroupMebers () {
-		List<InetAddress> addresses = new ArrayList<InetAddress>();
+		List<InetAddress> addresses =new ArrayList<>();
 		if (getView()==null) return addresses;
 		for (Address jGroupsAddress : getView().getMembers()){
 			addresses.add(getInetAddress(jGroupsAddress));
@@ -186,14 +149,14 @@ public class MChannelImpl extends PullPushAdapter implements MChannel {
 	}
 	@Override
 	public void close() {
-        super.stop();		
-		((Channel)transport).close();
+	    Util.close(channel);
 	}
-	@Override
+
 	protected void notifyViewChange(View topologyEvent) {
-		this.view = (View)((View)topologyEvent).clone();
-		super.notifyViewChange(view);
-		System.out.println("New membership received!!! ["+ view.size() + "]" );		
+		this.view=topologyEvent;
+		if(membership_listener != null)
+		    membership_listener.viewAccepted(topologyEvent);
+		System.out.println("New membership received!!! ["+ view.size() + "]" );
 		// The obtained graph is only a view of the network that the local node has.
 		// Moreover, the graph only includes the members of the multicast group
 		if (topologyEvent instanceof TopologyEvent){
@@ -202,12 +165,23 @@ public class MChannelImpl extends PullPushAdapter implements MChannel {
 	}
 	@Override
 	public void registerListener(Serializable identifier, MessageListener l) {
-		super.registerListener(identifier, l);
+		listener=l;
 	}
+
 	@Override
 	public void unregisterListener(Serializable identifier) {
-		super.unregisterListener(identifier);
+	    listener=null;
 	}
+
+    public void addMembershipListener(MembershipListener l) {
+        membership_listener=l;
+    }
+
+    @SuppressWarnings("unused")
+    public void removeMembershipListener(MembershipListener l) {
+        membership_listener=null;
+    }
+
 	
 	//	PRIVATE METHODS --
 	
@@ -227,14 +201,14 @@ public class MChannelImpl extends PullPushAdapter implements MChannel {
 			if (PropertiesLoader.isEmulated()){ 
 				seqNumber++;
 				msg.setObject(new SequenceNumberMessageWrapper(seqNumber,content));
-				notifier.newMessageSent(msg,getLocalInetAddress(),dstInetAddress,seqNumber,((Channel) transport).getView());
+				notifier.newMessageSent(msg, getLocalInetAddress(), dstInetAddress, seqNumber, channel.getView());
 			}else msg.setObject(content);
 		}
 		msg.setSrc(new IpAddress(getLocalInetAddress(),PropertiesLoader.getUnicastPort()));
 		msg.setDest(new IpAddress(dstInetAddress,PropertiesLoader.getUnicastPort()));
 		return msg;
 	}
-    private InetAddress	getInetAddress(Address dest) {
+    private static InetAddress	getInetAddress(Address dest) {
 		return ((IpAddress)dest).getIpAddress();
 	}
 	/**
@@ -264,16 +238,16 @@ public class MChannelImpl extends PullPushAdapter implements MChannel {
 			//get to their destinations
 			if (msg.getObject() instanceof SequenceNumberMessageWrapper){
 				SequenceNumberMessageWrapper messageWrapper = (SequenceNumberMessageWrapper)msg.getObject();
-				int seqNumber = messageWrapper.getSeqNumber();
+				int seq = messageWrapper.getSeqNumber();
 				Serializable content = messageWrapper.getContent();
 				msg.setObject(content);
 				Address addr = msg.getDest();
-				if (addr.isMulticastAddress()){
+				if (addr == null) {
 					//Now notify that we have received this message
-					notifier.newMessageReceived(msg,getInetAddress(msg.getSrc()),getInetAddress(msg.getDest()),getLocalInetAddress(),seqNumber);
+					notifier.newMessageReceived(msg,getInetAddress(msg.getSrc()),getInetAddress(msg.getDest()),getLocalInetAddress(),seq);
 				} else {
 					//Now notify that we have received this message
-					notifier.newMessageReceived(msg,getInetAddress(msg.getSrc()),getInetAddress(msg.getDest()),getInetAddress(msg.getDest()),seqNumber);
+					notifier.newMessageReceived(msg,getInetAddress(msg.getSrc()),getInetAddress(msg.getDest()),getInetAddress(msg.getDest()),seq);
 				}
 			}
 			return msg;

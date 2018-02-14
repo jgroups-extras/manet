@@ -1,17 +1,16 @@
 package urv.machannel;
 
-import java.io.Serializable;
-import java.net.InetAddress;
-import java.util.List;
-
 import org.jgroups.Address;
 import org.jgroups.Message;
 import org.jgroups.MessageListener;
 import org.jgroups.View;
-
 import urv.olsr.data.OLSRNode;
 import urv.util.graph.NetworkGraph;
 import urv.util.graph.Weight;
+
+import java.io.Serializable;
+import java.net.InetAddress;
+import java.util.List;
 
 /**
  * This interface defines the methods that provides

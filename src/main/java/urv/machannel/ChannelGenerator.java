@@ -1,17 +1,15 @@
 package urv.machannel;
 
-import java.net.InetAddress;
-import java.util.Hashtable;
-
-import org.jgroups.Channel;
-import org.jgroups.ChannelException;
 import org.jgroups.JChannel;
-
 import urv.app.Application;
 import urv.conf.ApplicationConfig;
 import urv.conf.PropertiesLoader;
 import urv.emulator.core.EmulationController;
 import urv.olsr.mcast.MulticastAddress;
+
+import java.net.InetAddress;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class is responsible of create MChannel instances.
@@ -28,8 +26,8 @@ public class ChannelGenerator {
 	//	CLASS FIELDS --
 	
 	private boolean emulated = false;
-	private String channelName = PropertiesLoader.getChannelId();	
-	private Hashtable<Application,Integer> applicationIds = new Hashtable<Application,Integer>();
+	private final String channelName = PropertiesLoader.getChannelId();
+	private final Map<Application,Integer> applicationIds = new HashMap<>();
 	
 	//	CONSTRUCTORS --
 	
@@ -44,7 +42,6 @@ public class ChannelGenerator {
 	 * 
 	 * @param mcastAddr
 	 * @param application
-	 * @param notif 
 	 * @return MChannel
 	 */
 	public MChannel createMChannel(MulticastAddress mcastAddr, Application application, EmulationController controller) {	
@@ -53,21 +50,18 @@ public class ChannelGenerator {
 		if (emulated){
 			// Search the application id
 			Integer id = applicationIds.get(application);
-			props = ApplicationConfig.getProtocolStackConfig(id.intValue()+1,PropertiesLoader.getUnicastPort(),mcastInetAddr);		
+			props = ApplicationConfig.getProtocolStackConfig(id +1, PropertiesLoader.getUnicastPort(), mcastInetAddr);
 		}else {
 			props = ApplicationConfig.getProtocolStackConfig(0,PropertiesLoader.getUnicastPort(),mcastInetAddr);
 		}		
 		print(props);
-		MChannel mChannel = new MChannelImpl(createJChannel(props),mcastAddr,channelName,controller);
-		return mChannel;
+		return new MChannelImpl(createJChannel(props), mcastAddr, channelName, controller);
 	}
 	/**
 	 * This method returns and initiates a MChannel instance when the channel is used in a not emulated environment.
 	 * You only need to know the mcastAddress to start up the group.
 	 * 
 	 * @param mcastAddr
-	 * @param application
-	 * @param notif 
 	 * @return MChannel
 	 */
 	public MChannel createMChannel(MulticastAddress mcastAddr) {	
@@ -75,16 +69,13 @@ public class ChannelGenerator {
 		InetAddress mcastInetAddr = mcastAddr.toInetAddress();		
 		props = ApplicationConfig.getProtocolStackConfig(0,PropertiesLoader.getUnicastPort(),mcastInetAddr);
 		print(props);
-		MChannel mChannel = new MChannelImpl(createJChannel(props),mcastAddr,channelName,null);
-		return mChannel;
+        return new MChannelImpl(createJChannel(props), mcastAddr, channelName, null);
 	}
 	/**
 	 * This method returns and initiates a MChannel instance when the channel is used in a not emulated environment.
 	 * You need to set the mcastAddress (MulticastAddress) and the group ID to start up the group.
 	 * 
 	 * @param mcastAddr
-	 * @param application
-	 * @param notif 
 	 * @return MChannel
 	 */
 	public MChannel createMChannel(MulticastAddress mcastAddr, String groupId) {	
@@ -92,17 +83,13 @@ public class ChannelGenerator {
 		InetAddress mcastInetAddr = mcastAddr.toInetAddress();		
 		props = ApplicationConfig.getProtocolStackConfig(0,PropertiesLoader.getUnicastPort(),mcastInetAddr);
 		print(props);
-		MChannel mChannel = new MChannelImpl(createJChannel(props),mcastAddr,
-				(groupId==null) ? channelName : groupId, null);
-		return mChannel;
+        return new MChannelImpl(createJChannel(props), mcastAddr, (groupId==null) ? channelName : groupId, null);
 	}
 	/**
 	 * This method returns and initiates a MChannel instance when the channel is used in a not emulated environment.
 	 * You need to set the mcastAddress (String) and the group ID to start up the group.
 	 * 
 	 * @param mcastAddr
-	 * @param application
-	 * @param notif 
 	 * @return MChannel
 	 */
 	public MChannel createMChannel(String mcastAddr, String groupId) {	
@@ -127,13 +114,12 @@ public class ChannelGenerator {
 	 * @param props
 	 * @return Channel
 	 */
-	private Channel createJChannel(String props) {		
-		Channel c = null;
+	private JChannel createJChannel(String props) {
+		JChannel c = null;
 		try{
 			c = new JChannel(props);
-		    c.setOpt(Channel.AUTO_RECONNECT, Boolean.TRUE);
 		    c.connect(channelName);
-		} catch (ChannelException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return c;
@@ -143,7 +129,7 @@ public class ChannelGenerator {
 	 * 
 	 * @param txt
 	 */
-	private void print(String txt){
+	private static void print(String txt){
 		while (true){
 			if (txt.length()>80){
 				String substring = txt.substring(0, 80);
