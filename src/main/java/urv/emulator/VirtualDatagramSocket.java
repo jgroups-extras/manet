@@ -1,18 +1,17 @@
 package urv.emulator;
 
+import org.jgroups.logging.Log;
+import org.jgroups.logging.LogFactory;
+import urv.conf.PropertiesLoader;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.List;
+import java.util.Queue;
 import java.util.Random;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.jgroups.util.Queue;
-import org.jgroups.util.QueueClosedException;
-
-import urv.conf.PropertiesLoader;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * @author Gerard Paris Aixala
@@ -22,9 +21,9 @@ public class VirtualDatagramSocket {
 	
 	//	CLASS FIELDS --
 	
-	private Queue myReceivingQueue;
-	private ReceivingQueues receivingQueues = ReceivingQueues.getInstance();
-	private VirtualNetworkInformation vni = VirtualNetworkInformation.getInstance();	
+	private Queue<DatagramPacket> myReceivingQueue;
+	private final ReceivingQueues receivingQueues = ReceivingQueues.getInstance();
+	private final VirtualNetworkInformation vni = VirtualNetworkInformation.getInstance();
 	private int localPort = 0;
 	private InetAddress localAddr = null;
 	private boolean enabled = false;
@@ -38,7 +37,7 @@ public class VirtualDatagramSocket {
 		if (receivingQueues.getQueue(addr)==null){
 			// Only a receivingQueue per host			
 			enabled = true;			
-			myReceivingQueue = new Queue();
+			myReceivingQueue = new ConcurrentLinkedQueue<>();
 			receivingQueues.registerQueue(addr, myReceivingQueue);			
 			log.info("VirtualDatagramSocket created. Delivery probability: "+PropertiesLoader.getSendingProb());
 		}		
@@ -57,18 +56,14 @@ public class VirtualDatagramSocket {
 	 */
 	public void receive(DatagramPacket p) throws IOException{
 		if (myReceivingQueue!=null){
-			try {
-				// blocks until a packet is available
-				DatagramPacket packet = (DatagramPacket)myReceivingQueue.remove();				
-				// Copying the received packet to the referenced packet
-				p.setAddress(packet.getAddress());
-				p.setData(packet.getData(),packet.getOffset(),packet.getLength());
-				p.setLength(packet.getLength());
-				p.setPort(packet.getPort());
-				p.setSocketAddress(packet.getSocketAddress());
-			} catch (QueueClosedException e) {
-				e.printStackTrace();
-			}
+			// blocks until a packet is available
+			DatagramPacket packet = (DatagramPacket)myReceivingQueue.remove();
+			// Copying the received packet to the referenced packet
+			p.setAddress(packet.getAddress());
+			p.setData(packet.getData(),packet.getOffset(),packet.getLength());
+			p.setLength(packet.getLength());
+			p.setPort(packet.getPort());
+			p.setSocketAddress(packet.getSocketAddress());
 		}
 	}	
 	/**
@@ -149,18 +144,14 @@ public class VirtualDatagramSocket {
 		}
 	}	
 	private void sendToQueue(DatagramPacket p,Queue q){
-		try {
-			//IF the queue has not been created yet, since the other
-			//application is not created, discard paquet
-			if (q==null){
-				log.debug("Queue not created, message discarded:"+p);
-				return;
-			}
-			q.add(p);
-		} catch (QueueClosedException e) {
-			e.printStackTrace();
+		//IF the queue has not been created yet, since the other
+		//application is not created, discard paquet
+		if (q==null){
+			log.debug("Queue not created, message discarded:"+p);
+			return;
 		}
-	}	
+		q.add(p);
+	}
 	/**
 	 * Sends a message to a queue with the probability specified in SENDING_PROB
 	 * @param p

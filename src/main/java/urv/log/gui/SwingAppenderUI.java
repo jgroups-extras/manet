@@ -1,20 +1,13 @@
 package urv.log.gui;
 
-import java.awt.Dimension;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.Logger;
+import urv.log.TextPaneAppender;
 
-import javax.swing.JButton;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextPane;
-import javax.swing.JToggleButton;
+import javax.swing.*;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
-
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.log4j.helpers.LogLog;
-
-import urv.log.TextPaneAppender;
+import java.awt.*;
 
 
 
@@ -96,13 +89,13 @@ public class SwingAppenderUI extends javax.swing.JPanel {
     }
     
     public void createTabsPerLevel(){
-    	Level[] levels = new Level[]{Level.ALL,
-    								 Level.FATAL,
-    								 Level.ERROR,
-    								 Level.WARN,
-    								 Level.INFO,
-    								 Level.DEBUG,
-    								 Level.TRACE};
+		Level[] levels ={Level.ALL,
+		Level.FATAL,
+		Level.ERROR,
+		Level.WARN,
+		Level.INFO,
+		Level.DEBUG,
+		Level.TRACE};
     	for (Level l : levels){
     		this.addTab(l);
     	}

@@ -1,11 +1,7 @@
 package urv.olsr.handlers;
 
-import java.util.Iterator;
-import java.util.Set;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
+import org.jgroups.logging.Log;
+import org.jgroups.logging.LogFactory;
 import urv.olsr.data.LinkCode;
 import urv.olsr.data.OLSRNode;
 import urv.olsr.data.SequenceNumber;
@@ -19,6 +15,9 @@ import urv.olsr.mcast.MulticastAddress;
 import urv.olsr.mcast.MulticastGroupsTable;
 import urv.olsr.message.TcMessage;
 import urv.olsr.message.ValidityTime;
+
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * This class is in charge of performing all needed actions when a new 

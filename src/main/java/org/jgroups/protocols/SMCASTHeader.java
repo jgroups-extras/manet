@@ -1,13 +1,10 @@
 package org.jgroups.protocols;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-
 import org.jgroups.Header;
 import org.jgroups.util.Streamable;
+
+import java.io.*;
+import java.util.function.Supplier;
 
 public class SMCASTHeader extends Header implements Streamable{
 	
@@ -16,8 +13,13 @@ public class SMCASTHeader extends Header implements Streamable{
 	public SMCASTHeader() {
 		
 	}
-	
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+
+    public short getMagicId() {
+        return Constants.SMCAST_ID;
+    }
+
+
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		/*type = in.readInt();
 		if (type==DATA){
 			dest = new OLSRNode();
@@ -61,7 +63,23 @@ public class SMCASTHeader extends Header implements Streamable{
 		
 	}
 
-	/**
+    public Supplier<? extends Header> create() {
+        return SMCASTHeader::new;
+    }
+
+    public int serializedSize() {
+        return 0; // currently no fields?
+    }
+
+    public void writeTo(DataOutput out) throws Exception {
+
+    }
+
+    public void readFrom(DataInput in) throws Exception {
+
+    }
+
+    /**
 	 * @return the type
 	 */
 	/*public int getType() {

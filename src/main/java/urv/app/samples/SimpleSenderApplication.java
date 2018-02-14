@@ -1,31 +1,22 @@
 package urv.app.samples;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
-
-import org.jgroups.Address;
-import org.jgroups.MembershipListener;
-import org.jgroups.Message;
-import org.jgroups.MessageListener;
-import org.jgroups.View;
-import org.jgroups.blocks.PullPushAdapter;
+import org.jgroups.*;
 import org.jgroups.stack.IpAddress;
-
 import urv.app.Application;
 import urv.machannel.MChannel;
 import urv.olsr.mcast.MulticastAddress;
 import urv.util.network.NetworkUtils;
 
+import java.io.*;
+import java.net.InetAddress;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
+
 /**
  * @author Gerard Paris Aixala
- * @author Marcel Arrufat Arias */
+ * @author Marcel Arrufat Arias
+ */
 public class SimpleSenderApplication extends Application implements MessageListener,MembershipListener{
 
 	//	CLASS FIELDS --
@@ -90,7 +81,7 @@ public class SimpleSenderApplication extends Application implements MessageListe
 		mcastAddr.setValue("224.0.0.10");
 		mChannel = super.createMChannel(mcastAddr);
 		mChannel.registerListener(name,this);
-		((PullPushAdapter)mChannel).addMembershipListener(this);
+		mChannel.addMembershipListener(this);
 		try {
 			f = new BufferedWriter(new FileWriter(new File(((IpAddress)mChannel.getLocalAddress()).getIpAddress().getHostName()+".txt")));
 		} catch (FileNotFoundException e) {

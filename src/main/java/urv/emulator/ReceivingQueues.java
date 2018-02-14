@@ -1,9 +1,10 @@
 package urv.emulator;
 
 import java.net.InetAddress;
-import java.util.Hashtable;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Queue;
 
-import org.jgroups.util.Queue;
 
 /**
  * @author Gerard Paris Aixala
@@ -13,7 +14,7 @@ public class ReceivingQueues {
 	
 	//	CLASS FIELDS --
 	
-	private Hashtable<InetAddress,Queue> queues = new Hashtable<InetAddress,Queue>();
+	private final Map<InetAddress,Queue> queues = new HashMap<>();
 	
 	//	CONSTRUCTORS --
 	

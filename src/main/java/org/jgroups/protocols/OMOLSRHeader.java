@@ -1,17 +1,16 @@
 package org.jgroups.protocols;
 
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.util.HashSet;
-import java.util.Set;
-
 import org.jgroups.Address;
+import org.jgroups.Global;
 import org.jgroups.Header;
 import org.jgroups.stack.IpAddress;
-
 import urv.olsr.data.OLSRNode;
 import urv.util.graph.HashMapSet;
+
+import java.io.*;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * Header for unicast messages sent in OMOLSR:
@@ -78,20 +77,7 @@ public class OMOLSRHeader extends Header {
 		return srcAddress;
 	}
 
-	/* (non-Javadoc)
-	 * @see java.io.Externalizable#readExternal(java.io.ObjectInput)
-	 */
-	public void readExternal(ObjectInput in) throws IOException,
-			ClassNotFoundException {
-		type = in.readByte();
-		groupId = (IpAddress)in.readObject();
-		srcAddress = (IpAddress)in.readObject();
-		forwardingTable = (HashMapSet<OLSRNode,OLSRNode>)in.readObject();
-		
-	}
-	
-	
-    
+
 	/**
 	 * Sets the list of all nodes that must receive the
 	 * packet
@@ -121,7 +107,45 @@ public class OMOLSRHeader extends Header {
 	}
 
 
-	public String toString() {
+    public short getMagicId() {
+        return Constants.OMOLSR_ID;
+    }
+
+    public Supplier<? extends Header> create() {
+        return OMOLSRHeader::new;
+    }
+
+    public int serializedSize() {
+        int retval=Global.BYTE_SIZE + sizeOf(groupId) + sizeOf(srcAddress) + Global.INT_SIZE;
+
+
+
+        return retval;
+    }
+
+    public void writeTo(DataOutput out) throws Exception {
+        out.writeByte(type);
+        writeIpAddress(groupId, out);
+        writeIpAddress(srcAddress, out);
+        out.writeInt(forwardingTable == null? 0 : forwardingTable.size());
+        if(forwardingTable != null) {
+
+        }
+
+    }
+
+    public void readFrom(DataInput in) throws Exception {
+        type=in.readByte();
+        groupId=readIpAddress(in);
+        srcAddress=readIpAddress(in);
+        int len=in.readInt();
+        for(int i=0; i < len; i++) {
+
+        }
+
+    }
+
+    public String toString() {
 		StringBuffer ret = new StringBuffer();
 		ret.append("["
 				+ type2Str(type));
@@ -149,23 +173,29 @@ public class OMOLSRHeader extends Header {
 			//ret.append(", something=" + something);
 		}
 		ret.append(']');
-
 		return ret.toString();
 	}
 
-	/* (non-Javadoc)
-	 * @see java.io.Externalizable#writeExternal(java.io.ObjectOutput)
-	 */
-	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeByte(type);
-		out.writeObject(groupId);
-		out.writeObject(srcAddress);
-		out.writeObject(forwardingTable);
-		
-
-	}
 
 
+    protected static void writeIpAddress(IpAddress addr, DataOutput out) throws Exception {
+	    out.writeByte(addr == null? 0 : 1);
+	    if(addr != null)
+	        addr.writeTo(out);
+    }
+
+    protected static IpAddress readIpAddress(DataInput in) throws Exception {
+	    IpAddress retval=null;
+	    if(in.readByte() == 1) {
+	        retval=new IpAddress();
+	        retval.readFrom(in);
+        }
+        return retval;
+    }
+
+    protected static int sizeOf(IpAddress addr) {
+	    return Global.BYTE_SIZE + (addr ==null? 0 : addr.serializedSize());
+    }
 
 
 

@@ -1,16 +1,15 @@
 package urv.omolsr.data;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
+import org.jgroups.logging.Log;
+import org.jgroups.logging.LogFactory;
 import urv.olsr.data.OLSRNode;
 import urv.util.graph.HashMapSet;
 import urv.util.graph.NetworkGraph;
 import urv.util.graph.Weight;
+
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * This class handles all the data related to the construction of the multicast

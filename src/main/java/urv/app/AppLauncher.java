@@ -2,8 +2,6 @@ package urv.app;
 
 import java.io.File;
 
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.PropertyConfigurator;
 
 import urv.conf.PropertiesLoader;
 import urv.emulator.VirtualNetworkInformation;
@@ -24,7 +22,8 @@ import urv.olsr.data.topology.TopologyInformationBaseTable;
  * execution or emulated.
  * 
  * @author Gerard Paris Aixala
- * @author Marcel Arrufat Arias *
+ * @author Marcel Arrufat Arias
+ *
  */
 public class AppLauncher {
 

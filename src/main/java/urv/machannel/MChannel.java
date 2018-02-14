@@ -1,9 +1,6 @@
 package urv.machannel;
 
-import org.jgroups.Address;
-import org.jgroups.Message;
-import org.jgroups.MessageListener;
-import org.jgroups.View;
+import org.jgroups.*;
 import urv.olsr.data.OLSRNode;
 import urv.util.graph.NetworkGraph;
 import urv.util.graph.Weight;
@@ -25,62 +22,58 @@ public interface MChannel {
 	 * 
 	 * @return local Address
 	 */
-	public Address getLocalAddress();
+    Address getLocalAddress();
 	/**
 	 * This method retrieves the name of the channel
 	 * 
 	 * @return MChannelName
 	 */
-	public String getChannelName();
+    String getChannelName();
 	/**
 	 * Return the InetAddresses of the group members
 	 * 
 	 * @return addressesOfGroupMembers
 	 */
-	public List<InetAddress> getInetAddressesOfGroupMebers();
+    List<InetAddress> getInetAddressesOfGroupMebers();
 	/**
 	 * Retrieves the NetworkGraph with the topology below us
 	 * 
 	 * @return Topology Graph
-	 */	
-	public NetworkGraph<OLSRNode,Weight> getNetworkGraph();
+	 */
+    NetworkGraph<OLSRNode,Weight> getNetworkGraph();
 	/**
 	 * Returns a view with the members of the current group
 	 * 
 	 * @see View
 	 * @return Members
 	 */
-	public View getView();	
+    View getView();
 	/**
 	 * Stops the channel
 	 */
-	public void close();
+    void close();
 	/**
 	 * Sends the message to the destination of the messages. As the normal Channel,
 	 * if the destination is a multicast address, the message is sent to all members
 	 * of this group.
 	 */
-	public void send(Message msg);	
+    void send(Message msg);
 	/**
 	 * Sends an unicast message to the selected member.
 	 */
-	public void send(Address dst, Address src, Serializable content);
+    void send(Address dst, Address src, Serializable content);
 	/**
 	 * Send a message to all neighbours (1 hop) of the current group
 	 */
-	public void sendToNeighbors(Serializable content);
+    void sendToNeighbors(Serializable content);
 	/**
 	 * Add a Message listener in the transport layer
-	 * 
-	 * @see PullPushAdapter
-	 * @param listener
 	 */
-	public void unregisterListener(Serializable identifier);
+    void unregisterListener(Serializable identifier);
 	/**
 	 * Removes a Message listener from the transport layer
-	 * 
-	 * @see PullPushAdapter
-	 * @param listener
 	 */
-	public void registerListener(Serializable identifier, MessageListener messageListener);
+    void registerListener(Serializable identifier, MessageListener messageListener);
+
+    void addMembershipListener(MembershipListener l);
 }
