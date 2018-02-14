@@ -84,7 +84,7 @@ public class AppLauncher {
 	//	PRIVATE METHODS --
 	
 	private void activateLog4J() {
-		String log4jPropertiesFile = "./conf/log4j.properties";
+		String log4jPropertiesFile = "log4j.properties";
 		File f = new File(log4jPropertiesFile);
 		if (f.exists()){
 			PropertyConfigurator.configure(log4jPropertiesFile);

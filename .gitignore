@@ -1,6 +1,7 @@
 *.iml
 *.ipr
 *.iws
+*.log
 *~
 .DS_Store
 .checkstyle
@@ -12,7 +13,7 @@
 .project
 .settings/
 atlassian*
-dist/eap/docker/jboss-eap-openshift.zip
-dist/wildfly/docker/wildfly-openshift.zip
 hs_err_pid*
 target/
+*/runResults/
+host*.txt

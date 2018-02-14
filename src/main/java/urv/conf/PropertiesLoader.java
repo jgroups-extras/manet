@@ -41,7 +41,10 @@ public class PropertiesLoader {
     //	CONSTRUCTORS --
     
     private PropertiesLoader() {
-        fileName=System.getProperty("user.dir")+"/conf/omolsr.properties";
+        fileName="omolsr.properties";
+        if (!(new File(fileName).exists())) {
+        	fileName = ClassLoader.getSystemClassLoader().getResource(fileName).getPath();
+        }
         defaults=new Properties();
         defaults.setProperty(EMULATED, "true");
         defaults.setProperty(COMM_LOG, "true");
@@ -51,7 +54,7 @@ public class PropertiesLoader {
         defaults.setProperty(THROUGHPUT_OPTIMIZATION_HOP_COUNT, "false");  
         defaults.setProperty(DYNAMIC_CREDIT, "true");  
         defaults.setProperty(MULTICAST_PROTOCOL, "omolsr");
-        defaults.setProperty(GRAPH_FILE, "resources/graphs/graph4nodesLine.net");
+        defaults.setProperty(GRAPH_FILE, "graphs/graph4nodesLine.net");
         defaults.setProperty(APPLICATION, "urv.app.samples.SimpleSenderApplication");
         defaults.setProperty(EMULATION_TASKS, "");
         defaults.setProperty(SENDING_PROB, "1.0");

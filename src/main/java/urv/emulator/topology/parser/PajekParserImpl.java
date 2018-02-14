@@ -1,6 +1,7 @@
 package urv.emulator.topology.parser;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -29,8 +30,13 @@ public class PajekParserImpl implements Parser {
 		String line;
 		int numNodes;
 		String temp;		
-		try {			
-			FileReader netFile = new FileReader(file);
+		try {
+			String resolvedFilePath = file;
+	        if (!(new File(file).exists())) {
+	        	resolvedFilePath = ClassLoader.getSystemClassLoader().getResource(file).getPath();
+	        }
+
+			FileReader netFile = new FileReader(resolvedFilePath);
 			BufferedReader reader = new BufferedReader(netFile);
 			//First of all, read number of nodes
 			line = reader.readLine();

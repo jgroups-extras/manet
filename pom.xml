@@ -20,8 +20,24 @@
 
     <developers>
         <developer>
-            <name>Pedro Antonio García López</name>
+            <name>Pedro García</name>
             <email>pedro.garcia@urv.cat</email>
+        </developer>
+        <developer>
+            <name>Marcel Arrufat</name>
+            <email>marcel.arrufat@urv.cat</email>
+        </developer>
+        <developer>
+            <name>Gerard Paris</name>
+            <email>gerard.paris@urv.cat</email>
+        </developer>
+        <developer>
+            <name>Raul Gracia</name>
+            <email>raul.gracia@urv.cat</email>
+        </developer>
+        <developer>
+            <name>Marc Espelt</name>
+            <email>marc.espelt@urv.cat</email>
         </developer>
         <developer>
             <name>Bela Ban</name>
@@ -54,9 +70,13 @@
     </scm>
 
     <properties>
-        <version.jgroups>4.0.10.Final</version.jgroups>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+
+        <version.jgroups>2.5.2</version.jgroups>
+        <version.jung>1.7.6</version.jung>
+        <version.commons-logging>1.2</version.commons-logging>
+        <version.log4j>1.2.16</version.log4j>
 
         <!-- nexus-staging-maven-plugin -->
         <autoReleaseAfterClose>true</autoReleaseAfterClose>
@@ -82,6 +102,19 @@
 
     <repositories>
         <repository>
+        	<id>apache-releases-repository</id>
+            <name>Apache Releases repository</name>
+            <url>https://repository.apache.org/content/repositories/releases/</url>
+            <layout>default</layout>
+            <releases>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
             <id>jboss-public-repository-group</id>
             <name>JBoss Public Maven Repository Group</name>
             <url>https://repository.jboss.org/nexus/content/groups/public/</url>
@@ -95,7 +128,7 @@
                 <updatePolicy>interval:120</updatePolicy>
             </snapshots>
         </repository>
-        <repository>
+        <!-- repository>
             <id>jboss-releases-repository</id>
             <name>JBoss Public Maven Repository Staging</name>
             <url>https://repository.jboss.org/nexus/service/local/staging/deploy/maven2</url>
@@ -108,7 +141,7 @@
                 <enabled>true</enabled>
                 <updatePolicy>interval:120</updatePolicy>
             </snapshots>
-        </repository>
+        </repository -->
         <repository>
             <id>jboss-snapshots-repository</id>
             <name>JBoss Nexus snapshots repository</name>
@@ -128,11 +161,25 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.jgroups</groupId>
+            <groupId>jgroups</groupId>
             <artifactId>jgroups</artifactId>
             <version>${version.jgroups}</version>
         </dependency>
-
+        <dependency>
+        	<groupId>commons-logging</groupId>
+        	<artifactId>commons-logging</artifactId>
+        	<version>${version.commons-logging}</version>
+        </dependency>
+        <dependency>
+        	<groupId>jung</groupId>
+        	<artifactId>jung</artifactId>
+        	<version>${version.jung}</version>
+        </dependency>
+        <dependency>
+        	<groupId>log4j</groupId>
+        	<artifactId>log4j</artifactId>
+        	<version>${version.log4j}</version>
+        </dependency>
     </dependencies>
 
     <build>
