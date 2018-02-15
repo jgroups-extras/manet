@@ -1,11 +1,11 @@
 package urv.olsr.data;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import org.jgroups.util.Streamable;
+
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
-
-import org.jgroups.util.Streamable;
 
 /**
  * Sequence numbers are used in OLSR with the purpose of discarding
@@ -87,13 +87,13 @@ public class SequenceNumber implements Serializable,Streamable,Comparable{
 	public int hashCode(){
 		return seqNumber;
 	}	
-	public void readFrom(DataInputStream in) throws IOException, IllegalAccessException, InstantiationException {
-		seqNumber = (int)(in.readShort() & 0xFFFF);
+	public void readFrom(DataInput in) throws IOException, IllegalAccessException, InstantiationException {
+		seqNumber =in.readShort() & 0xFFFF;
 	}	
 	public String toString(){
 		return String.valueOf(seqNumber);
 	}	
-	public void writeTo(DataOutputStream out) throws IOException {
+	public void writeTo(DataOutput out) throws IOException {
 		out.writeShort(seqNumber);
 	}	
 	

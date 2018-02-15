@@ -1,19 +1,18 @@
 package urv.olsr.mcast;
 
-import java.io.Serializable;
-import java.util.Vector;
-
 import org.jgroups.Address;
 import org.jgroups.View;
 import org.jgroups.ViewId;
 import org.jgroups.stack.IpAddress;
-
 import urv.conf.PropertiesLoader;
 import urv.olsr.data.OLSRNode;
 import urv.olsr.data.routing.RoutingTable;
 import urv.omolsr.data.OMOLSRNetworkGraph;
 import urv.util.graph.NetworkGraph;
 import urv.util.graph.Weight;
+
+import java.io.Serializable;
+import java.util.Set;
 
 /**
  * Event passed to the above layer for giving some information. In
@@ -43,13 +42,15 @@ public class TopologyEvent extends View implements Serializable{
 		this.routingTable = routingTable;
 		this.localNode = localNode;
 		// Create the membership for the jGroups protocols
-		this.members = new Vector<Address>();
-    	for (OLSRNode neighbor: networkGraph.getNodeList()){
+        Set<OLSRNode> nodeList=networkGraph.getNodeList();
+		this.members = new Address[nodeList.size()];
+		int index=0;
+    	for (OLSRNode neighbor: nodeList){
     		//At the moment (it should be different) all nodes use the same port, defined in the omolsr.properties
     		IpAddress ipAddress = new IpAddress(neighbor.getAddress(), PropertiesLoader.getUnicastPort());
-    		members.add(ipAddress);
+    		members[index++]=ipAddress;
     	}
-    	this.vid = new ViewId(this.localNode.getJGroupsAddress());
+    	this.view_id = new ViewId(this.localNode.getJGroupsAddress());
 	}	
 	
 	//	PUBLIC METHODS --

@@ -1,18 +1,12 @@
 package urv.olsr.mcast;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.Serializable;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
 import org.jgroups.Address;
 import org.jgroups.stack.IpAddress;
 import org.jgroups.util.Streamable;
+
+import java.io.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * Class that represents a multicast address of a group
@@ -49,7 +43,7 @@ public class MulticastAddress implements Serializable,Streamable,Externalizable{
 		in.read(b, 0, 4);
 		this.mcastAddress=InetAddress.getByAddress(b);
 	}
-	public void readFrom(DataInputStream in) throws IOException, IllegalAccessException, InstantiationException {
+	public void readFrom(DataInput in) throws IOException, IllegalAccessException, InstantiationException {
 		 byte[] a = new byte[4]; // 4 bytes (IPv4)
 	     in.readFully(a);
 	     this.mcastAddress=InetAddress.getByAddress(a);
@@ -63,7 +57,7 @@ public class MulticastAddress implements Serializable,Streamable,Externalizable{
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.write(mcastAddress.getAddress());
 	}
-	public void writeTo(DataOutputStream out) throws IOException {
+	public void writeTo(DataOutput out) throws IOException {
 		byte[] a = mcastAddress.getAddress();  // 4 bytes (IPv4)
         out.write(a, 0, a.length);
 	}

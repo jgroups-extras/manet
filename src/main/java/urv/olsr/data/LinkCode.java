@@ -1,11 +1,11 @@
 package urv.olsr.data;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import org.jgroups.util.Streamable;
+
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
-
-import org.jgroups.util.Streamable;
 
 /**
  *  This field specifies information about the link between the
@@ -138,12 +138,12 @@ public class LinkCode implements Serializable, Streamable{
 		}
 		return buff.toString();
 	}
-	public void readFrom(DataInputStream in) throws IOException, IllegalAccessException, InstantiationException {
+	public void readFrom(DataInput in) throws IOException, IllegalAccessException, InstantiationException {
 		byte tmp = in.readByte();
 		neighborType = ((int)tmp)/4;
 		linkType = tmp & mask2LSB;
 	}	
-	public void writeTo(DataOutputStream out) throws IOException {
+	public void writeTo(DataOutput out) throws IOException {
 		out.writeByte(linkType+neighborType*4); // BYTE: 7 6 5 4    3    2      1  0
 												//       0 0 0 0 NeighborType LinkType
 	}

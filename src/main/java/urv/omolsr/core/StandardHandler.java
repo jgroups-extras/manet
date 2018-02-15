@@ -1,18 +1,16 @@
 package urv.omolsr.core;
 
-import org.jgroups.Event;
 import org.jgroups.Message;
 import org.jgroups.logging.Log;
 import org.jgroups.logging.LogFactory;
+import org.jgroups.protocols.Constants;
 import org.jgroups.protocols.OMOLSR;
 import org.jgroups.protocols.OMOLSRHeader;
 import urv.olsr.data.OLSRNode;
 import urv.omolsr.data.OMOLSRData;
 import urv.util.graph.HashMapSet;
 
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.Set;
+import java.util.*;
 
 /**
  * This class process all OMOLSR received messages (DATA and CONTROL messages).
@@ -26,7 +24,7 @@ public class StandardHandler implements Handler {
 	//	CLASS FIELDS --
 	private final OMOLSRData data;
 	private final OLSRNode localOLSRNode;
-	private final Hashtable broadcastMinNeigbour = new Hashtable();
+	private final Map<String,Integer> broadcastMinNeigbour = new HashMap<>();
 	private final OMOLSR protocolCallback;
 	protected final Log log = LogFactory.getLog(this.getClass());
 
@@ -52,7 +50,7 @@ public class StandardHandler implements Handler {
 			Set<OLSRNode> virtualNeighbors = data.getVirtualNeighbors(localOLSRNode);
 			//2. Send the message to the neighbors we have to send the message
 			//	 as it is indicated in the forwarding table
-			sendForwardedMessageToVirtualNeighbors(msg.copy(),virtualNeighbors);
+			sendForwardedMessageToVirtualNeighbors(msg.copy());
 		}catch (Exception e) {
 		   e.printStackTrace();
 		}
@@ -83,19 +81,17 @@ public class StandardHandler implements Handler {
 	 * @param num
 	 */
 	public void registerBroadcastMinNeighbour(String groupId, int num){
-		broadcastMinNeigbour.put(groupId,new Integer(num));
+		broadcastMinNeigbour.put(groupId, num);
 	}
 
-	private String getProtocolName(){
-		return "OMOLSR";
-	}
+
 	/**
 	 * Checks if the specified node is included in the headers, either as direct receiver or indirect receiver
 	 * @param headers
 	 * @param node
 	 * @return
 	 */
-	private boolean nodeIsInHeaders(HashMapSet<OLSRNode,OLSRNode> headers, OLSRNode node){
+	private static boolean nodeIsInHeaders(HashMapSet<OLSRNode,OLSRNode> headers, OLSRNode node){
 		for (OLSRNode n1:headers.keySet()){
 			if (node.equals(n1)){
 				return true;
@@ -115,12 +111,11 @@ public class StandardHandler implements Handler {
 	 * Forwards the message to the rest of nodes (virtual neighbors) that have not
 	 * received the message yet
 	 * @param msg
-	 * @param virtualNeighbors
-	 */
-	private void sendForwardedMessageToVirtualNeighbors(Message msg, Set<OLSRNode> virtualNeighbors) {
+     */
+	private void sendForwardedMessageToVirtualNeighbors(Message msg) {
 
 		//Get information about nodes that still must receive the message
-		OMOLSRHeader omolsrHeader = (OMOLSRHeader)msg.getHeader(getProtocolName());
+		OMOLSRHeader omolsrHeader =msg.getHeader(Constants.OMOLSR_ID);
 
 		//These are the nodes that we should send the message to
 		HashSet<OLSRNode> nodeSet = omolsrHeader.getForwardingTableEntry(localOLSRNode);
@@ -149,12 +144,12 @@ public class StandardHandler implements Handler {
 
 			//Once we have the headers, we can send a message to each virtualNeighbor
 			//Add header info
-			msg.putHeader(getProtocolName(),newOmolsrHeader);
+			msg.putHeader(Constants.OMOLSR_ID,newOmolsrHeader);
 
 			for (OLSRNode vnToForwardMessage:virtualNeighborsToForwardSet){
 				Message msgCopy = msg.copy();
 				msgCopy.setDest(vnToForwardMessage.getJGroupsAddress());
-				protocolCallback.eventDown(new Event(Event.MSG,msgCopy));
+				protocolCallback.down(msgCopy);
 
 			}
 			//	TODO: We must maybe check that all pending nodes will receive the
@@ -171,10 +166,10 @@ public class StandardHandler implements Handler {
 					newOmolsrHeader2.setType(OMOLSRHeader.DATA);
 					newOmolsrHeader2.setSrcAddress(omolsrHeader.getSrcAddress());
 					newOmolsrHeader2.setGroupId(omolsrHeader.groupId);
-					msgCopy.putHeader(getProtocolName(), newOmolsrHeader2);
+					msgCopy.putHeader(Constants.OMOLSR_ID, newOmolsrHeader2);
 					msgCopy.setDest(n.getJGroupsAddress());
 					System.err.println("OMOLSR: Sending msg specifically to remaining node (otherwise would not receive the message)");
-					protocolCallback.eventDown(new Event(Event.MSG,msgCopy));
+					protocolCallback.down(msgCopy);
 				}
 			}
 		}
@@ -189,7 +184,7 @@ public class StandardHandler implements Handler {
 		Message msgCopy = msg.copy();
 		OMOLSRHeader omolsrHeader = new OMOLSRHeader();
 		//Create empty headers
-		HashMapSet<OLSRNode,OLSRNode> headers = new HashMapSet<OLSRNode,OLSRNode>();
+		HashMapSet<OLSRNode,OLSRNode> headers =new HashMapSet<>();
 
 		omolsrHeader.setForwardingTable(headers);
 		omolsrHeader.setType(OMOLSRHeader.DATA);
@@ -198,10 +193,10 @@ public class StandardHandler implements Handler {
 		//not setting groupID
 		
 		//Set the header on the message
-		msgCopy.putHeader(getProtocolName(),omolsrHeader);
+		msgCopy.putHeader(Constants.OMOLSR_ID,omolsrHeader);
 		//Set local address as destination of the message
 		msgCopy.setDest(localOLSRNode.getJGroupsAddress());	
-		protocolCallback.eventDown(new Event(Event.MSG,msgCopy));
+		protocolCallback.down(msgCopy);
 	}	
 	/**
 	 * Sends a new original message to the virtual neighbors. The message includes
@@ -222,14 +217,14 @@ public class StandardHandler implements Handler {
 		omolsrHeader.setGroupId(msg.getDest());
 
 		//Set the header on the message
-		msg.putHeader(getProtocolName(),omolsrHeader);
+		msg.putHeader(Constants.OMOLSR_ID,omolsrHeader);
 
 		//Send a copy of the message to all the virtual neighbors
 		for (OLSRNode node:virtualNeighbors){
 			Message msgCopy = msg.copy();
 			//System.out.println("Src: "+localOLSRNode+" setting dest as "+node.getJGroupsAddress());
 			msgCopy.setDest(node.getJGroupsAddress());
-			protocolCallback.eventDown(new Event(Event.MSG,msgCopy));
+			protocolCallback.down(msgCopy);
 		}
 		/* ****** ADDED NEW ******* */
 		Set<OLSRNode> temporalNodes = data.getTemporalNodes();
@@ -239,9 +234,9 @@ public class StandardHandler implements Handler {
 			omolsrHeader2.setType(OMOLSRHeader.DATA);
 			omolsrHeader2.setSrcAddress(localOLSRNode.getJGroupsAddress());
 			omolsrHeader2.setGroupId(msg.getDest());
-			msgCopy.putHeader(getProtocolName(),omolsrHeader2);
+			msgCopy.putHeader(Constants.OMOLSR_ID,omolsrHeader2);
 			msgCopy.setDest(n.getJGroupsAddress());
-			protocolCallback.eventDown(new Event(Event.MSG,msgCopy));
+			protocolCallback.down(msgCopy);
 		}
 		/* ****** ADDED NEW ******* */
 	}	

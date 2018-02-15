@@ -1,14 +1,12 @@
 package urv.olsr.message;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
-
 import org.jgroups.util.Streamable;
-
 import urv.olsr.data.OLSRNode;
 import urv.olsr.data.SequenceNumber;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.Serializable;
 
 /**
  * OLSR communicates using a unified packet format for all data related
@@ -95,7 +93,7 @@ public class OLSRPacket implements Streamable, Serializable{
 	
 	//	OVERRIDDEN METHODS --
 	
-	public void readFrom(DataInputStream in) throws IOException, IllegalAccessException, InstantiationException {
+	public void readFrom(DataInput in) throws Exception {
 		messageType = (int)in.readByte();
 		
 		vTime = new ValidityTime(0.0); 
@@ -130,7 +128,7 @@ public class OLSRPacket implements Streamable, Serializable{
 	public void setTtl(int ttl) {
 		this.ttl = ttl;
 	}
-	public void writeTo(DataOutputStream out) throws IOException {
+	public void writeTo(DataOutput out) throws Exception {
 		out.writeByte(messageType);
 		vTime.writeTo(out);
 		originator.writeTo(out);

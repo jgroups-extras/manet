@@ -71,7 +71,7 @@ public class TcMessageGenerator{
 		tcMsg.setJoinedMulticastGroups(multicastGroupsTable.getJoinedMulticastGroups(localNode));
 		ValidityTime TC_MESSAGE_VALIDITY_TIME = new ValidityTime(OLSRThread.TC_MESSAGE_VALIDITY_TIME); // TODO define it correctly
 		OLSRPacket olsrPacket = olsrPacketFactory.getOlsrPacket(OLSRPacket.TC_MESSAGE, TC_MESSAGE_VALIDITY_TIME, 32, tcMsg);
-		Message msg = new Message(ApplicationConfig.BROADCAST_ADDRESS,null,olsrPacket);
+		Message msg = new Message(ApplicationConfig.BROADCAST_ADDRESS,olsrPacket);
 		messageSender.sendControlMessage(msg);
 	}
 }

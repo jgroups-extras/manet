@@ -1,13 +1,12 @@
 package urv.olsr.message;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.util.HashSet;
-
 import urv.olsr.data.LinkCode;
 import urv.olsr.data.OLSRNode;
 import urv.util.graph.HashMapSet;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.util.HashSet;
 
 /**
  * A common mechanism is employed for populating the local link
@@ -32,8 +31,7 @@ public class HelloMessage implements OLSRMessage/*Serializable,*/{
 	
 	//	OVERRIDDEN METHODS --
 	
-	public void readFrom(DataInputStream in) throws IOException, 
-			IllegalAccessException, InstantiationException {
+	public void readFrom(DataInput in) throws Exception {
 		int mapSize = in.readByte();	// Added by URV to the standard implementation
 		for (int i=0;i<mapSize;i++){
 			LinkCode linkCode = new LinkCode();
@@ -65,7 +63,7 @@ public class HelloMessage implements OLSRMessage/*Serializable,*/{
 		}
 		return buf.toString();
 	}
-	public void writeTo(DataOutputStream out) throws IOException {		
+	public void writeTo(DataOutput out) throws Exception {
 		out.writeByte(map.size());	// Added by URV to the standard implementation
 		
 		for (LinkCode linkCode : map.keySet()){

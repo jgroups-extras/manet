@@ -1,10 +1,9 @@
 package urv.olsr.message;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 import org.jgroups.util.Streamable;
+
+import java.io.DataInput;
+import java.io.DataOutput;
 
 /**
  * This field indicates for how long time after reception a node MUST consider
@@ -44,14 +43,13 @@ public class ValidityTime implements Streamable {
 
 	// OVERRIDDEN METHODS --
 
-	public void readFrom(DataInputStream in) throws IOException,
-			IllegalAccessException, InstantiationException {
+	public void readFrom(DataInput in) throws Exception {
 		int read = signedByteToInt(in.readByte());
 		int a = read / 16;
 		int b = read & MS4BITS_MASK;
 		vTime = C * (1.0 + a / 16.0) * Math.pow(2.0, b);
 	}
-	public void writeTo(DataOutputStream out) throws IOException {
+	public void writeTo(DataOutput out) throws Exception {
 		int tmp = 0;
 		int b = (int) Math.floor(Math.log10(vTime / C) / Math.log10(2));
 		int a = (int) Math.ceil(16 * (vTime / (C * Math.pow(2, b)) - 1));

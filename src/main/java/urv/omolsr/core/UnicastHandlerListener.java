@@ -15,8 +15,8 @@ public interface UnicastHandlerListener {
 	 * @param msg
 	 * @return true if the message must be passed up
 	 */
-	public boolean handleIncomingDataMessage(Message msg);
+	boolean handleIncomingDataMessage(Message msg);
 	
-	public void handleOutgoingDataMessage(Message msg);
+	void handleOutgoingDataMessage(Message msg);
 	
 }

@@ -1,16 +1,15 @@
 package urv.olsr.message;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.HashSet;
-import java.util.Set;
-
 import urv.olsr.data.OLSRNode;
 import urv.olsr.data.SequenceNumber;
 import urv.olsr.data.mpr.OLSRSet;
 import urv.olsr.mcast.MulticastAddress;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * A TC message is sent by a node in the network to declare a set of
@@ -50,8 +49,7 @@ public class TcMessage implements OLSRMessage,Serializable{
 	
 	//	OVERRIDDEN METHODS --
 	
-	public void readFrom(DataInputStream in) throws IOException,
-			IllegalAccessException, InstantiationException {		
+	public void readFrom(DataInput in) throws Exception {
 		ansn = new SequenceNumber(0);
 		ansn.readFrom(in);
 		int listSize = in.readByte(); // Added by URV to the standard implementation
@@ -82,7 +80,7 @@ public class TcMessage implements OLSRMessage,Serializable{
 		buf.append("]\n");
 		return buf.toString();
 	}
-	public void writeTo(DataOutputStream out) throws IOException {		
+	public void writeTo(DataOutput out) throws Exception {
 		ansn.writeTo(out);
 		out.writeByte(advertisedNeighbors.size()); // Added by URV to the standard implementation
 		for (OLSRNode node : advertisedNeighbors){

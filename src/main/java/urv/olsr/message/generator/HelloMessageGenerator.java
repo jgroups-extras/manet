@@ -140,7 +140,7 @@ public class HelloMessageGenerator{
 		HelloMessage helloMsg = neighborTable.createHelloMessage();
 		ValidityTime HELLO_MESSAGE_VALIDITY_TIME = new ValidityTime(OLSRThread.HELLO_MESSAGE_VALIDITY_TIME); // TODO define it correctly
 		OLSRPacket olsrPacket = olsrPacketFactory.getOlsrPacket(OLSRPacket.HELLO_MESSAGE, HELLO_MESSAGE_VALIDITY_TIME, 1, helloMsg);
-		Message msg = new Message(ApplicationConfig.BROADCAST_ADDRESS,null,olsrPacket);
+		Message msg = new Message(ApplicationConfig.BROADCAST_ADDRESS,olsrPacket);
 		messageSender.sendControlMessage(msg);
 	}
 }
