@@ -50,7 +50,7 @@ public class Draw extends ReceiverAdapter implements ActionListener {
         channel.setOpt(Channel.AUTO_RECONNECT, Boolean.TRUE);
         channel.setReceiver(this);*/
         channel = new ChannelGenerator(false).createMChannel("225.222.222.222", groupname);
-        channel.registerListener(groupname, this);
+        channel.setReceiver(this);
     }
 
     /*public Draw(Channel channel) throws Exception {

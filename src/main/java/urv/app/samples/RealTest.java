@@ -1,28 +1,6 @@
 package urv.app.samples;
 
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-
-import org.jgroups.Address;
-import org.jgroups.Message;
-import org.jgroups.MessageListener;
-
+import org.jgroups.*;
 import urv.app.Application;
 import urv.app.messages.ReplyObject;
 import urv.app.messages.RequestObject;
@@ -33,6 +11,15 @@ import urv.olsr.data.routing.RoutingTable;
 import urv.olsr.data.topology.TopologyInformationBaseTable;
 import urv.olsr.mcast.MulticastAddress;
 import urv.util.network.NetworkUtils;
+
+import javax.swing.*;
+import java.awt.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author Gerard Paris Aixala
@@ -104,7 +91,7 @@ public class RealTest extends Application{
 		MulticastAddress mcastAddr = new MulticastAddress();
 		mcastAddr.setValue(mcastAddress);		
 		app = createMChannel(mcastAddr);
-		MessageListener messageListener = new MessageListener(){
+		Receiver messageListener = new ReceiverAdapter() {
 			public byte[] getState() {
 				return null;
 			}
@@ -139,9 +126,8 @@ public class RealTest extends Application{
 					System.err.println("Error: I received an"+obj);
 				}
 			}
-			public void setState(byte[] state) {}			
 		};
-		app.registerListener(name ,messageListener);
+		app.setReceiver(messageListener);
 	}	
 	/**
 	 * This method initializes jButtonDump	

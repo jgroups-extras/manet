@@ -17,7 +17,7 @@ import java.util.Set;
  * @author Gerard Paris Aixala
  * @author Marcel Arrufat Arias
  */
-public class SimpleSenderApplication extends Application implements MessageListener,MembershipListener{
+public class SimpleSenderApplication extends Application implements Receiver {
 
 	//	CLASS FIELDS --
 	
@@ -80,8 +80,7 @@ public class SimpleSenderApplication extends Application implements MessageListe
 		mcastAddr = new MulticastAddress();
 		mcastAddr.setValue("224.0.0.10");
 		mChannel = super.createMChannel(mcastAddr);
-		mChannel.registerListener(name,this);
-		mChannel.addMembershipListener(this);
+		mChannel.setReceiver(this);
 		try {
 			f = new BufferedWriter(new FileWriter(new File(((IpAddress)mChannel.getLocalAddress()).getIpAddress().getHostName()+".txt")));
 		} catch (FileNotFoundException e) {

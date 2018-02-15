@@ -1,8 +1,5 @@
 package urv.app;
 
-import java.io.File;
-
-
 import urv.conf.PropertiesLoader;
 import urv.emulator.VirtualNetworkInformation;
 import urv.emulator.core.EmulationController;
@@ -37,7 +34,7 @@ public class AppLauncher {
 	
 	public AppLauncher(){
 		Log.getInstance().setCurrentLevel(Log.INFO);
-		activateLog4J();
+		// activateLog4J();
 		registerDumpingClasses();
 		channelGenerator = new ChannelGenerator(emulated);
 		emulationController = new EmulationController();
@@ -82,7 +79,7 @@ public class AppLauncher {
 	
 	//	PRIVATE METHODS --
 	
-	private void activateLog4J() {
+	/*private void activateLog4J() {
 		String log4jPropertiesFile = "log4j.properties";
 		File f = new File(log4jPropertiesFile);
 		if (f.exists()){
@@ -90,7 +87,9 @@ public class AppLauncher {
 		} else {
 			BasicConfigurator.configure();
 		}
-	}
+	}*/
+
+
 	private Application newApplicationInstance(){
 		Application app = null;
 		try {

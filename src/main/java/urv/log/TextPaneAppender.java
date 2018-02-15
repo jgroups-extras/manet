@@ -1,19 +1,19 @@
 package urv.log;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Hashtable;
-
-import javax.swing.JTextPane;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
-import javax.swing.text.SimpleAttributeSet;
-
 import org.apache.log4j.Layout;
 import org.apache.log4j.Level;
 import org.apache.log4j.WriterAppender;
 import org.apache.log4j.helpers.LogLog;
 import org.apache.log4j.spi.LoggingEvent;
+
+import javax.swing.*;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
+import javax.swing.text.SimpleAttributeSet;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Hashtable;
+
 
 /**
  */

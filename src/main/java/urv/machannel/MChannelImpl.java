@@ -163,27 +163,12 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 			graph = ((TopologyEvent)topologyEvent).getOMOLSRNetworkGraph().getNetworkGraphCopy();
 		}
 	}
-	@Override
-	public void registerListener(Serializable identifier, MessageListener l) {
-		listener=l;
-	}
 
-	@Override
-	public void unregisterListener(Serializable identifier) {
-	    listener=null;
-	}
-
-    public void addMembershipListener(MembershipListener l) {
-        membership_listener=l;
+    public void setReceiver(Receiver r) {
+        channel.setReceiver(r);
     }
 
-    @SuppressWarnings("unused")
-    public void removeMembershipListener(MembershipListener l) {
-        membership_listener=null;
-    }
-
-	
-	//	PRIVATE METHODS --
+    //	PRIVATE METHODS --
 	
 	/**
 	 * Creates a message. It creates a wrapped message for emulation, or a regular

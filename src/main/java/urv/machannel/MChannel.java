@@ -66,14 +66,6 @@ public interface MChannel {
 	 * Send a message to all neighbours (1 hop) of the current group
 	 */
     void sendToNeighbors(Serializable content);
-	/**
-	 * Add a Message listener in the transport layer
-	 */
-    void unregisterListener(Serializable identifier);
-	/**
-	 * Removes a Message listener from the transport layer
-	 */
-    void registerListener(Serializable identifier, MessageListener messageListener);
 
-    void addMembershipListener(MembershipListener l);
+    void setReceiver(Receiver r);
 }

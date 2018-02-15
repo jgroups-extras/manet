@@ -1,5 +1,9 @@
 package urv.log;
 
+import org.jgroups.Address;
+import urv.util.date.DateUtils;
+import urv.util.graph.HashMapSet;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -8,11 +12,6 @@ import java.text.DateFormat;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
-
-import org.jgroups.Address;
-
-import urv.util.date.DateUtils;
-import urv.util.graph.HashMapSet;
 
 /**
  *
@@ -144,8 +143,7 @@ public class Log {
 	//	PRIVATE METHODS --
 	
 	private void _out(String str){
-		String dateStr = DateFormat.getDateTimeInstance(
-				DateFormat.MEDIUM, DateFormat.MEDIUM).format(new Date());
+		String dateStr = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM).format(new Date());
 		// Write to file
 		try {
 			out.write(dateStr+"\n");

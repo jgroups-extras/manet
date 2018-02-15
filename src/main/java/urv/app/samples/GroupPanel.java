@@ -1,30 +1,8 @@
 package urv.app.samples;
 
-import java.awt.Color;
-import java.awt.Rectangle;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.List;
-
-import javax.swing.DefaultListModel;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-
 import org.jgroups.Message;
-import org.jgroups.MessageListener;
-
+import org.jgroups.Receiver;
+import org.jgroups.ReceiverAdapter;
 import urv.app.messages.FileMessage;
 import urv.app.messages.SoundMessage;
 import urv.conf.PropertiesLoader;
@@ -32,6 +10,16 @@ import urv.machannel.MChannel;
 import urv.util.audio.AudioUtils;
 import urv.util.date.DateUtils;
 import urv.util.file.FileUtils;
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.List;
 
 
 public class GroupPanel extends JPanel {
@@ -87,7 +75,7 @@ public class GroupPanel extends JPanel {
 		}
 		jTabbedPaneChats.removeAll();
 		refreshThread.stop();
-		groupChannel.unregisterListener(ChannelID);
+		groupChannel.setReceiver(null);
 		groupChannel.close();
 		tabPanel.remove(me);
 	}
@@ -403,7 +391,7 @@ public class GroupPanel extends JPanel {
 	 * Method that register the receptions of the messages that belong to that group
 	 */
 	private void registerMChannel(){
-		MessageListener messageListener = new MessageListener(){			
+		Receiver messageListener = new ReceiverAdapter() {
 			public byte[] getState() {
 				return null;
 			}
@@ -429,7 +417,7 @@ public class GroupPanel extends JPanel {
 					}
 					
 					//If it's my own message, don't print it
-					if (!msg.getDest().isMulticastAddress() || !msg.getSrc().equals(groupChannel.getLocalAddress())){
+					if (msg != null || !msg.getSrc().equals(groupChannel.getLocalAddress())){
 						((ChatPanel)jTabbedPaneChats.getComponentAt(numTab)).addChatMsg("["+shortName(msg.getSrc().toString())+"] "+str);
 					}
 					
@@ -495,7 +483,7 @@ public class GroupPanel extends JPanel {
 				return ".."+ip.substring(index2ndDot, indexColon);
 			}
 		};
-		groupChannel.registerListener(ChannelID ,messageListener);
+		groupChannel.setReceiver(messageListener);
 	}
 
 	/*

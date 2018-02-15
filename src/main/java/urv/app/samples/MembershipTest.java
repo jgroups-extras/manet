@@ -1,30 +1,8 @@
 package urv.app.samples;
 
-import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Hashtable;
-import java.util.Random;
-
-import javax.swing.DefaultListModel;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-import javax.swing.event.ListDataEvent;
-import javax.swing.event.ListDataListener;
-
 import org.jgroups.Message;
-import org.jgroups.MessageListener;
+import org.jgroups.ReceiverAdapter;
 import org.jgroups.stack.IpAddress;
-
 import urv.app.Application;
 import urv.app.messages.ReplyObject;
 import urv.app.messages.RequestObject;
@@ -32,6 +10,15 @@ import urv.log.Log;
 import urv.machannel.MChannel;
 import urv.olsr.mcast.MulticastAddress;
 import urv.util.network.NetworkUtils;
+
+import javax.swing.*;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
+import java.awt.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Hashtable;
+import java.util.Random;
 
 /**
  * @author Gerard Paris Aixala
@@ -119,7 +106,7 @@ public class MembershipTest extends Application {
 		multicastAddress.setValue(mcastAddr);
 		
 		MChannel app = createMChannel(multicastAddress);
-		app.registerListener(name,new PingingMessageListener(app));
+		app.setReceiver(new PingingMessageListener(app));
 		
 		synchronized(lock){
 			applications.put(mcastAddr,app);
@@ -527,7 +514,7 @@ public class MembershipTest extends Application {
 		}
 	}
 
-	private class PingingMessageListener implements MessageListener{
+	private class PingingMessageListener extends ReceiverAdapter {
 		
 		MChannel app;
 		
@@ -555,10 +542,6 @@ public class MembershipTest extends Application {
 				addMemberToList(addr.getHostAddress());
 			}
 		}
-
-		public void setState(byte[] state) {
-		}
-		
 	}
 	
 	

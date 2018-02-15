@@ -7,8 +7,10 @@ import org.jgroups.stack.IpAddress;
 import urv.olsr.data.OLSRNode;
 import urv.util.graph.HashMapSet;
 
-import java.io.*;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -31,7 +33,7 @@ public class OMOLSRHeader extends Header {
      * A list of following destinations 
      * <Address>
      */
-    private HashMapSet<OLSRNode,OLSRNode> forwardingTable = new HashMapSet<OLSRNode,OLSRNode>();
+    private HashMapSet<OLSRNode,OLSRNode> forwardingTable=new HashMapSet<>();
     
 	/**
 	 * @param type
@@ -117,7 +119,19 @@ public class OMOLSRHeader extends Header {
 
     public int serializedSize() {
         int retval=Global.BYTE_SIZE + sizeOf(groupId) + sizeOf(srcAddress) + Global.INT_SIZE;
-
+        if(forwardingTable != null) {
+            for(Map.Entry<OLSRNode,HashSet<OLSRNode>> entry: forwardingTable.entrySet()) {
+                OLSRNode key=entry.getKey();
+                HashSet<OLSRNode> val=entry.getValue();
+                retval+=key.serializedSize();
+                int len=val != null && !val.isEmpty()? val.size() : 0;
+                retval+=Global.INT_SIZE;
+                if(len > 0) {
+                    for(OLSRNode n: val)
+                        retval+=n.serializedSize();
+                }
+            }
+        }
 
 
         return retval;
@@ -129,7 +143,17 @@ public class OMOLSRHeader extends Header {
         writeIpAddress(srcAddress, out);
         out.writeInt(forwardingTable == null? 0 : forwardingTable.size());
         if(forwardingTable != null) {
-
+            for(Map.Entry<OLSRNode,HashSet<OLSRNode>> entry: forwardingTable.entrySet()) {
+                OLSRNode key=entry.getKey();
+                HashSet<OLSRNode> val=entry.getValue();
+                key.writeTo(out);
+                int len=val != null && !val.isEmpty()? val.size() : 0;
+                out.writeInt(len);
+                if(len > 0) {
+                    for(OLSRNode n: val)
+                        n.writeTo(out);
+                }
+            }
         }
 
     }
@@ -140,9 +164,17 @@ public class OMOLSRHeader extends Header {
         srcAddress=readIpAddress(in);
         int len=in.readInt();
         for(int i=0; i < len; i++) {
-
+            OLSRNode key=new OLSRNode();
+            key.readFrom(in);
+            HashSet<OLSRNode> vals=new HashSet<>();
+            for(int j=0; j < in.readInt(); j++) {
+                OLSRNode n=new OLSRNode();
+                n.readFrom(in);
+                vals.add(n);
+            }
+            if(!vals.isEmpty())
+                forwardingTable.put(key, vals);
         }
-
     }
 
     public String toString() {
