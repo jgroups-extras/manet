@@ -21,7 +21,4 @@ public class JOLSR_UNICAST extends UNICAST3 {
     }
 
     public String getMembers() {return members != null? members.toString() : "[]";}
-
-
-
 }

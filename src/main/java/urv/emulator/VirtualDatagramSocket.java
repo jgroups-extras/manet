@@ -11,7 +11,7 @@ import java.net.SocketException;
 import java.util.List;
 import java.util.Queue;
 import java.util.Random;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 
 /**
  * @author Gerard Paris Aixala
@@ -37,7 +37,7 @@ public class VirtualDatagramSocket {
 		if (receivingQueues.getQueue(addr)==null){
 			// Only a receivingQueue per host			
 			enabled = true;			
-			myReceivingQueue = new ConcurrentLinkedQueue<>();
+			myReceivingQueue = new LinkedBlockingDeque<>();
 			receivingQueues.registerQueue(addr, myReceivingQueue);			
 			log.info("VirtualDatagramSocket created. Delivery probability: "+PropertiesLoader.getSendingProb());
 		}		
