@@ -21,7 +21,8 @@ public class OLSRHeader extends Header {
 		
 	}
 
-    public short getMagicId() {
+    @Override
+	public short getMagicId() {
         return Constants.OLSR_ID;
     }
 
@@ -47,17 +48,20 @@ public class OLSRHeader extends Header {
 	}
 
 
-    public Supplier<? extends Header> create() {
+    @Override
+	public Supplier<? extends Header> create() {
         return OLSRHeader::new;
     }
 
-    public int serializedSize() {
+    @Override
+	public int serializedSize() {
         int retval=Global.BYTE_SIZE; // type;
         if(type == DATA)
             retval+=dest.serializedSize() + Global.INT_SIZE;
         return retval;
     }
 
+	@Override
 	public void readFrom(DataInput in) throws Exception {
         type = in.readByte();
         if (type==DATA){
@@ -71,7 +75,8 @@ public class OLSRHeader extends Header {
 		}
 	}
 
-    public void writeTo(DataOutput out) throws Exception {
+    @Override
+	public void writeTo(DataOutput out) throws Exception {
         out.writeByte(type);
         if (type==DATA){
             dest.writeTo(out);
@@ -105,6 +110,7 @@ public class OLSRHeader extends Header {
 		this.type = type;
 	}
 
+	@Override
 	public String toString() {
         return "[OLSR: <variables> ]";
     }

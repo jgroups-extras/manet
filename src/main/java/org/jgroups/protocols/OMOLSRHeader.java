@@ -27,11 +27,12 @@ public class OMOLSRHeader extends Header {
     public IpAddress groupId;
     
     public IpAddress srcAddress;
+    
 	/**
      * A list of following destinations 
      * <Address>
      */
-    private HashMapSet<OLSRNode,OLSRNode> forwardingTable = new HashMapSet<OLSRNode,OLSRNode>();
+    private HashMapSet<OLSRNode,OLSRNode> forwardingTable = new HashMapSet<>();
     
 	/**
 	 * @param type
@@ -106,46 +107,47 @@ public class OMOLSRHeader extends Header {
 		this.type = type;
 	}
 
-
-    public short getMagicId() {
+    @Override
+	public short getMagicId() {
         return Constants.OMOLSR_ID;
     }
 
-    public Supplier<? extends Header> create() {
+    @Override
+	public Supplier<? extends Header> create() {
         return OMOLSRHeader::new;
     }
 
-    public int serializedSize() {
+    @Override
+	public int serializedSize() {
         int retval=Global.BYTE_SIZE + sizeOf(groupId) + sizeOf(srcAddress) + Global.INT_SIZE;
-
-
 
         return retval;
     }
 
-    public void writeTo(DataOutput out) throws Exception {
+    @Override
+	public void writeTo(DataOutput out) throws Exception {
         out.writeByte(type);
         writeIpAddress(groupId, out);
         writeIpAddress(srcAddress, out);
         out.writeInt(forwardingTable == null? 0 : forwardingTable.size());
         if(forwardingTable != null) {
-
+        	// FIXME empty block
         }
-
     }
 
-    public void readFrom(DataInput in) throws Exception {
+    @Override
+	public void readFrom(DataInput in) throws Exception {
         type=in.readByte();
         groupId=readIpAddress(in);
         srcAddress=readIpAddress(in);
         int len=in.readInt();
         for(int i=0; i < len; i++) {
-
+        	// FIXME empty block
         }
-
     }
 
-    public String toString() {
+    @Override
+	public String toString() {
 		StringBuffer ret = new StringBuffer();
 		ret.append("["
 				+ type2Str(type));
@@ -177,7 +179,6 @@ public class OMOLSRHeader extends Header {
 	}
 
 
-
     protected static void writeIpAddress(IpAddress addr, DataOutput out) throws Exception {
 	    out.writeByte(addr == null? 0 : 1);
 	    if(addr != null)
@@ -196,7 +197,5 @@ public class OMOLSRHeader extends Header {
     protected static int sizeOf(IpAddress addr) {
 	    return Global.BYTE_SIZE + (addr ==null? 0 : addr.serializedSize());
     }
-
-
 
 }

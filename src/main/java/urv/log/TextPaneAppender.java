@@ -2,40 +2,47 @@ package urv.log;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Hashtable;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.JTextPane;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.SimpleAttributeSet;
 
-import org.apache.log4j.Layout;
-import org.apache.log4j.Level;
-import org.apache.log4j.WriterAppender;
-import org.apache.log4j.helpers.LogLog;
-import org.apache.log4j.spi.LoggingEvent;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Core;
+import org.apache.logging.log4j.core.Filter;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.plugins.Plugin;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 
 /**
  */
-public class TextPaneAppender extends WriterAppender {
+@Plugin(name = "TextPaneWriter", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
+public final class TextPaneAppender extends AbstractAppender {
+	private static final PatternLayout defaultLayout = PatternLayout.createDefaultLayout();
 	private TextPaneOutStream textPaneOutStream = null;
+	private boolean closed = true;
+	PatternLayout logLayout = defaultLayout;
 
 	public TextPaneAppender() {
-		super();
-		setWriter(createWriter(getTextPaneOutStream()));
-		super.activateOptions();
+	    super("TextPaneWriter", (Filter)null, defaultLayout, true);
+//		setWriter(createWriter(getTextPaneOutStream()));
+//		super.activateOptions();
 	}
 
-	public TextPaneAppender(Layout layout) {
-		super();
-		setLayout(layout);
-		setWriter(createWriter(getTextPaneOutStream()));
-		super.activateOptions();
+	public TextPaneAppender(PatternLayout layout) {
+	    super("TextPaneWriter", (Filter)null, layout, true);
+//		setWriter(createWriter(getTextPaneOutStream()));
+//		super.activateOptions();
 	}
-
-	public synchronized void doAppend(LoggingEvent event) {
+	
+	public synchronized void doAppend(LogEvent event) {
 		if (closed) {
-			LogLog.error("Attempted to append to closed appender named [" + name + "].");
+//			LogLog.error("Attempted to append to closed appender named [" + name + "].");
 			return;
 		}
 		this.appendByLevel(event);
@@ -47,9 +54,14 @@ public class TextPaneAppender extends WriterAppender {
 		return textPaneOutStream;
 	}
 
-	protected void appendByLevel(LoggingEvent event) {
-		this.getTextPaneOutStream().writeLeveled(this.layout.format(event), event.getLevel());
+	protected void appendByLevel(LogEvent event) {
+		this.getTextPaneOutStream().writeLeveled(logLayout.toSerializable(event), event.getLevel());
 		this.getTextPaneOutStream().flush();
+	}
+
+	@Override
+	public void append(LogEvent event) {
+		appendByLevel(event);
 	}
 
 	/**
@@ -57,35 +69,38 @@ public class TextPaneAppender extends WriterAppender {
 	 *         JTextPane
 	 */
 	public static class TextPaneOutStream extends OutputStream {
-		private final Hashtable<Integer, StringBuffer> buffers = new Hashtable<Integer, StringBuffer>();
-		private final Hashtable<Integer, JTextPane> panes = new Hashtable<Integer, JTextPane>();
-		private final Hashtable<StringBuffer, Boolean> flushables = new Hashtable<StringBuffer, Boolean>();
+		private final Map<Level, StringBuffer> buffers = new HashMap<>();
+		private final Map<Level, JTextPane> panes = new HashMap<>();
+		private final Map<StringBuffer, Boolean> flushables = new HashMap<>();
 		
 		public TextPaneOutStream() {
 			// ALL level is always active
 			StringBuffer sb = new StringBuffer();
-			buffers.put(Level.ALL.toInt(),sb);
-			flushables.put(sb, true);
+			buffers.put(Level.ALL,sb);
+			flushables.put(sb, Boolean.TRUE);
 		}
 
 		public void addTextPane(JTextPane textPane, Level l) {
 			synchronized (panes) {
-				panes.put(l.toInt(), textPane);
+				panes.put(l, textPane);
 				synchronized (buffers) {
 					if (!buffers.containsKey(l)) {
 						StringBuffer sb = new StringBuffer();
-						buffers.put(l.toInt(), sb);
-						flushables.put(sb, true);
+						buffers.put(l, sb);
+						flushables.put(sb, Boolean.TRUE);
 					}
 				}
 			}
 		}
 
+		@Override
 		public void close() {
+			// do nothing
 		}
 
+		@Override
 		public void flush() {
-			for (int level : buffers.keySet()) {
+			for (Level level : buffers.keySet()) {
 				JTextPane textPane = panes.get(level);
 				StringBuffer buff = buffers.get(level);
 				synchronized (buff) {
@@ -99,7 +114,7 @@ public class TextPaneAppender extends WriterAppender {
 								textPane.setCaretPosition(document.getLength());
 							}
 						} catch (BadLocationException e) {
-							LogLog.warn(e.getMessage());
+//							LogLog.warn(e.getMessage());
 						}
 					}
 				}
@@ -107,11 +122,11 @@ public class TextPaneAppender extends WriterAppender {
 
 		}
 
-		public StringBuffer getTextBuffer(int level) {
+		public StringBuffer getTextBuffer(Level level) {
 			return buffers.get(level);
 		}
 
-		public JTextPane getTextPane(int level) {
+		public JTextPane getTextPane(Level level) {
 			return panes.get(level);
 		}
 
@@ -129,22 +144,24 @@ public class TextPaneAppender extends WriterAppender {
 			}
 		}
 
+		@Override
 		public void write(int b) throws IOException {
-			LogLog.error("bad write call!");
+//			LogLog.error("bad write call!");
 		}
 
 		public void writeLeveled(String msg, Level level) {
-			StringBuffer buff = this.buffers.get(level.toInt());
+			StringBuffer buff = this.buffers.get(level);
 			if (buff != null){
 				synchronized (buff) {
 					buff.append(msg);
 				}
 			}
 			// add it to all as well
-			buff = this.buffers.get(Level.ALL.toInt());
+			buff = this.buffers.get(Level.ALL);
 			synchronized (buff) {
 				buff.append(msg);
 			}
 		}
 	}
+
 }

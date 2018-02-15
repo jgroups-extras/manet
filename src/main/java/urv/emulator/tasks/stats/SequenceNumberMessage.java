@@ -20,7 +20,7 @@ public class SequenceNumberMessage extends Message {
 	// CONSTRUCTORS --
 	
 	public SequenceNumberMessage(int seqNumber, InetAddress dest, Serializable content) {
-		super(new IpAddress(dest,PropertiesLoader.getUnicastPort()), null,content);
+		super(new IpAddress(dest,PropertiesLoader.getUnicastPort()), content);
 		this.seqNumber = seqNumber;		
 	}
 

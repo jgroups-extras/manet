@@ -13,14 +13,13 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Properties;
 
 import org.jgroups.Address;
 import org.jgroups.Global;
 import org.jgroups.Message;
+import org.jgroups.logging.Log;
+import org.jgroups.logging.LogFactory;
 import org.jgroups.stack.IpAddress;
 import org.jgroups.util.BoundedList;
 import org.jgroups.util.Util;
@@ -51,14 +50,16 @@ import org.jgroups.util.Util;
  * @author Bela Ban
  * @version $Id: JOLSR_UDP.java,v 1.144.2.1 2007/09/17 07:41:03 belaban Exp $
  */
-public class JOLSR_UDP extends TP implements Runnable {
+public class JOLSR_UDP extends UDP implements Runnable {
 
     /**
      * BoundedList<Integer> of the last 100 ports used. This is to avoid reusing a port for DatagramSocket
      */
-    private static volatile BoundedList last_ports_used=null;
+    private static volatile BoundedList<Integer> last_ports_used=null;
 
     private final static String MCAST_RECEIVER_THREAD_NAME = "UDP mcast receiver";
+
+    protected final Log        log=LogFactory.getLog(this.getClass());
 
     /** Socket used for
      * <ol>
@@ -73,58 +74,14 @@ public class JOLSR_UDP extends TP implements Runnable {
     int             num_last_ports=100;
 
 
-    /** IP multicast socket for <em>sending</em> and <em>receiving</em> multicast packets */
-    MulticastSocket mcast_sock=null;
-
     /** If we have multiple mcast send sockets, e.g. send_interfaces or send_on_all_interfaces enabled */
     MulticastSocket[] mcast_send_sockets=null;
-
-
-    /**
-     * Traffic class for sending unicast and multicast datagrams.
-     * Valid values are (check {@link DatagramSocket#setTrafficClass(int)} );  for details):
-     * <UL>
-     * <LI><CODE>IPTOS_LOWCOST (0x02)</CODE>, <b>decimal 2</b></LI>
-     * <LI><CODE>IPTOS_RELIABILITY (0x04)</CODE><, <b>decimal 4</b>/LI>
-     * <LI><CODE>IPTOS_THROUGHPUT (0x08)</CODE>, <b>decimal 8</b></LI>
-     * <LI><CODE>IPTOS_LOWDELAY (0x10)</CODE>, <b>decimal</b> 16</LI>
-     * </UL>
-     */
-    int             tos=8; // valid values: 2, 4, 8 (default), 16
-
-    /** The multicast address (mcast address and port) this member uses */
-    IpAddress       mcast_addr=null;
-
-    /** The multicast address used for sending and receiving packets */
-    String          mcast_addr_name="228.8.8.8";
-
-    /** The multicast port used for sending and receiving packets */
-    int             mcast_port=7600;
 
     /** The multicast receiver thread */
     Thread          mcast_receiver=null;
 
     /** The unicast receiver thread */
     UcastReceiver   ucast_receiver=null;
-
-    /** Whether to enable IP multicasting. If false, multiple unicast datagram
-     * packets are sent rather than one multicast packet */
-    boolean         ip_mcast=true;
-
-    /** The time-to-live (TTL) for multicast datagram packets */
-    int             ip_ttl=8;
-
-    /** Send buffer size of the multicast datagram socket */
-    int             mcast_send_buf_size=32000;
-
-    /** Receive buffer size of the multicast datagram socket */
-    int             mcast_recv_buf_size=64000;
-
-    /** Send buffer size of the unicast datagram socket */
-    int             ucast_send_buf_size=32000;
-
-    /** Receive buffer size of the unicast datagram socket */
-    int             ucast_recv_buf_size=64000;
 
 
     /** Usually, src addresses are nulled, and the receiver simply sets them to the address of the sender. However,
@@ -144,32 +101,30 @@ public class JOLSR_UDP extends TP implements Runnable {
 
 
 
-    public String getInfo() {
+    @Override
+	public String getInfo() {
         StringBuilder sb=new StringBuilder();
-        sb.append("group_addr=").append(mcast_addr_name).append(':').append(mcast_port).append("\n");
+        sb.append("group_addr=").append(mcast_addr).append(':').append(mcast_port).append("\n");
         return sb.toString();
     }
 
-
-
-
-
-
     /* ----------------------- Receiving of MCAST UDP packets ------------------------ */
 
-    public String getName() {
+    @Override
+	public String getName() {
         return "JOLSR_UDP";
     }
 
-    public void postUnmarshalling(Message msg, Address dest, Address src, boolean multicast) {
+    public static void postUnmarshalling(Message msg, Address dest, Address src, boolean multicast) {
         msg.setDest(dest);
     }
 
-    public void postUnmarshallingList(Message msg, Address dest, boolean multicast) {
+    public static void postUnmarshallingList(Message msg, Address dest, boolean multicast) {
         msg.setDest(dest);
     }
 
-    public void run() {
+    @Override
+	public void run() {
         DatagramPacket  packet;
         byte            receive_buf[]=new byte[65535];
         int             offset, len, sender_port;
@@ -199,7 +154,7 @@ public class JOLSR_UDP extends TP implements Runnable {
                                   "Use the FRAG protocol and make its frag_size lower than " + receive_buf.length);
                 }
 
-                receive(mcast_addr, sender, data, offset, len);
+                receive(sender, data, offset, len);
             }
             catch(SocketException sock_ex) {
                  if(log.isTraceEnabled()) log.trace("multicast socket is closed, exception=" + sock_ex);
@@ -222,105 +177,16 @@ public class JOLSR_UDP extends TP implements Runnable {
             _send(mcast_addr.getIpAddress(), mcast_addr.getPort(), true, data, offset, length);
         }
         else {
-            ArrayList<Address> mbrs=new ArrayList<Address>(members);
+            List<Address> mbrs=new ArrayList<>(members);
             for(Address mbr: mbrs) {
                 _send(((IpAddress)mbr).getIpAddress(), ((IpAddress)mbr).getPort(), false, data, offset, length);
             }
         }
     }
 
-    public void sendToSingleMember(Address dest, byte[] data, int offset, int length) throws Exception {
+    @Override
+	public void sendToSingleMember(Address dest, byte[] data, int offset, int length) throws Exception {
         _send(((IpAddress)dest).getIpAddress(), ((IpAddress)dest).getPort(), false, data, offset, length);
-    }
-
-    /**
-     * Setup the Protocol instance acording to the configuration string.
-     * The following properties are read by the JOLSR_UDP protocol:
-     * <ul>
-     * <li> param mcast_addr - the multicast address to use default is 228.8.8.8
-     * <li> param mcast_port - (int) the port that the multicast is sent on default is 7600
-     * <li> param ip_mcast - (boolean) flag whether to use IP multicast - default is true
-     * <li> param ip_ttl - Set the default time-to-live for multicast packets sent out on this socket. default is 32
-     * </ul>
-     * @return true if no other properties are left.
-     *         false if the properties still have data in them, ie ,
-     *         properties are left over and not handled by the protocol stack
-     */
-    public boolean setProperties(Properties props) {
-        String str;
-
-        super.setProperties(props);
-
-        str=props.getProperty("num_last_ports");
-        if(str != null) {
-            num_last_ports=Integer.parseInt(str);
-            props.remove("num_last_ports");
-        }
-
-        str=Util.getProperty(new String[]{Global.UDP_MCAST_ADDR, "jboss.partition.udpGroup"}, props,
-                             "mcast_addr", false, "228.8.8.8");
-        if(str != null)
-            mcast_addr_name=str;
-
-        str=Util.getProperty(new String[]{Global.UDP_MCAST_PORT, "jboss.partition.udpPort"},
-                             props, "mcast_port", false, "7600");
-        if(str != null)
-            mcast_port=Integer.parseInt(str);
-
-        str=props.getProperty("ip_mcast");
-        if(str != null) {
-            ip_mcast=Boolean.valueOf(str).booleanValue();
-            props.remove("ip_mcast");
-        }
-
-        str=Util.getProperty(new String[]{Global.UDP_IP_TTL}, props, "ip_ttl", false, "64");
-        if(str != null) {
-            ip_ttl=Integer.parseInt(str);
-            props.remove("ip_ttl");
-        }
-
-        str=props.getProperty("tos");
-        if(str != null) {
-            tos=Integer.parseInt(str);
-            props.remove("tos");
-        }
-
-        str=props.getProperty("mcast_send_buf_size");
-        if(str != null) {
-            mcast_send_buf_size=Integer.parseInt(str);
-            props.remove("mcast_send_buf_size");
-        }
-
-        str=props.getProperty("mcast_recv_buf_size");
-        if(str != null) {
-            mcast_recv_buf_size=Integer.parseInt(str);
-            props.remove("mcast_recv_buf_size");
-        }
-
-        str=props.getProperty("ucast_send_buf_size");
-        if(str != null) {
-            ucast_send_buf_size=Integer.parseInt(str);
-            props.remove("ucast_send_buf_size");
-        }
-
-        str=props.getProperty("ucast_recv_buf_size");
-        if(str != null) {
-            ucast_recv_buf_size=Integer.parseInt(str);
-            props.remove("ucast_recv_buf_size");
-        }
-
-        str=props.getProperty("null_src_addresses");
-        if(str != null) {
-            // null_src_addresses=Boolean.valueOf(str).booleanValue();
-            props.remove("null_src_addresses");
-            log.error("null_src_addresses has been deprecated, property will be ignored");
-        }
-
-        Util.checkBufferSize("JOLSR_UDP.mcast_send_buf_size", mcast_send_buf_size);
-        Util.checkBufferSize("JOLSR_UDP.mcast_recv_buf_size", mcast_recv_buf_size);
-        Util.checkBufferSize("JOLSR_UDP.ucast_send_buf_size", ucast_send_buf_size);
-        Util.checkBufferSize("JOLSR_UDP.ucast_recv_buf_size", ucast_recv_buf_size);
-        return props.isEmpty();
     }
 
 
@@ -333,7 +199,8 @@ public class JOLSR_UDP extends TP implements Runnable {
     /**
      * Creates the unicast and multicast sockets and starts the unicast and multicast receiver threads
      */
-    public void start() throws Exception {
+    @Override
+	public void start() throws Exception {
         if(log.isDebugEnabled()) log.debug("creating sockets and starting threads");
         try {
             createSockets();
@@ -346,17 +213,13 @@ public class JOLSR_UDP extends TP implements Runnable {
         startThreads();
     }
 
-
-
-
-
-    public void stop() {
+    @Override
+	public void stop() {
         if(log.isDebugEnabled()) log.debug("closing sockets and stopping threads");
         stopThreads();  // will close sockets, closeSockets() is not really needed anymore, but...
         closeSockets(); // ... we'll leave it in there for now (doesn't do anything if already closed)
         super.stop();
     }
-
 
     private void _send(InetAddress dest, int port, boolean mcast, byte[] data, int offset, int length) throws Exception {
         DatagramPacket packet=new DatagramPacket(data, offset, length, dest, port);
@@ -407,42 +270,27 @@ public class JOLSR_UDP extends TP implements Runnable {
      * @param interfaces List<NetworkInterface>. Guaranteed to have no duplicates
      * @param s
      * @param mcastAddr
-     * @throws IOException
      */
-    private void bindToInterfaces(List interfaces, MulticastSocket s, InetAddress mcastAddr) throws IOException {
+    @Override
+	protected void bindToInterfaces(List<NetworkInterface> interfaces, MulticastSocket s, InetAddress mcastAddr) {
         SocketAddress tmp_mcast_addr=new InetSocketAddress(mcastAddr, mcast_port);
-        for(Iterator it=interfaces.iterator(); it.hasNext();) {
-            NetworkInterface i=(NetworkInterface)it.next();
-            for(Enumeration en2=i.getInetAddresses(); en2.hasMoreElements();) {
-                InetAddress addr=(InetAddress)en2.nextElement();
-                s.joinGroup(tmp_mcast_addr, i);
+        for(NetworkInterface iface : interfaces) {
+            for(Enumeration<InetAddress> en2 = iface.getInetAddresses(); en2.hasMoreElements();) {
+            	InetAddress addr = en2.nextElement();
+                try {
+					s.joinGroup(tmp_mcast_addr, iface);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
                 if(log.isTraceEnabled())
-                    log.trace("joined " + tmp_mcast_addr + " on " + i.getName() + " (" + addr + ")");
+                    log.trace("joined " + tmp_mcast_addr + " on " + iface.getName() + " (" + addr + ")");
                 break;
             }
         }
     }
 
-
-//    private void bindToAllInterfaces(MulticastSocket s, InetAddress mcastAddr) throws IOException {
-//        SocketAddress tmp_mcast_addr=new InetSocketAddress(mcastAddr, mcast_port);
-//        Enumeration en=NetworkInterface.getNetworkInterfaces();
-//        while(en.hasMoreElements()) {
-//            NetworkInterface i=(NetworkInterface)en.nextElement();
-//            for(Enumeration en2=i.getInetAddresses(); en2.hasMoreElements();) {
-//                InetAddress addr=(InetAddress)en2.nextElement();
-//                // if(addr.isLoopbackAddress())
-//                // continue;
-//                s.joinGroup(tmp_mcast_addr, i);
-//                if(log.isTraceEnabled())
-//                    log.trace("joined " + tmp_mcast_addr + " on interface " + i.getName() + " (" + addr + ")");
-//                break;
-//            }
-//        }
-//    }
-
-
-    private void closeSocket() {
+    void closeSocket() {
         if(sock != null) {
             sock.close();
             sock=null;
@@ -457,9 +305,8 @@ public class JOLSR_UDP extends TP implements Runnable {
      * (sending and receiving). This is due to Linux's non-BSD compatibility
      * in the JDK port (see DESIGN).
      */
-    private void createSockets() throws Exception {
-        InetAddress tmp_addr;
-
+    @Override
+	protected void createSockets() throws Exception {
         // bind_addr not set, try to assign one by default. This is needed on Windows
 
         // changed by bela Feb 12 2003: by default multicast sockets will be bound to all network interfaces
@@ -473,8 +320,8 @@ public class JOLSR_UDP extends TP implements Runnable {
 //                bind_addr=interfaces[0];
 //        }
 
-        if(bind_addr == null && !use_local_host) {
-            bind_addr=Util.getFirstNonLoopbackAddress();
+        if(bind_addr == null /* && !use_local_host */) {
+            bind_addr=Util.getNonLoopbackAddress();
         }
         if(bind_addr == null)
             bind_addr=InetAddress.getLocalHost();
@@ -510,17 +357,12 @@ public class JOLSR_UDP extends TP implements Runnable {
         //OMOLSR CHANGE
         local_addr=new IpAddress(bind_addr,bind_port);
 
-        if(additional_data != null)
-            ((IpAddress)local_addr).setAdditionalData(additional_data);
-
-
         // 3. Create socket for receiving IP multicast packets
         if(ip_mcast) {
             // 3a. Create mcast receiver socket
+        	InetAddress mcast_ipAddress = mcast_addr.getIpAddress();
             mcast_sock=new MulticastSocket(mcast_port);
             mcast_sock.setTimeToLive(ip_ttl);
-            tmp_addr=InetAddress.getByName(mcast_addr_name);
-            mcast_addr=new IpAddress(tmp_addr, mcast_port);
             if(tos > 0) {
                 try {
                     mcast_sock.setTrafficClass(tos);
@@ -531,31 +373,30 @@ public class JOLSR_UDP extends TP implements Runnable {
             }
 
             if(receive_on_all_interfaces || (receive_interfaces != null && !receive_interfaces.isEmpty())) {
-                List interfaces;
+            	List<NetworkInterface> interfaces;
                 if(receive_interfaces != null)
                     interfaces=receive_interfaces;
                 else
                     interfaces=Util.getAllAvailableInterfaces();
-                bindToInterfaces(interfaces, mcast_sock, mcast_addr.getIpAddress());
+                bindToInterfaces(interfaces, mcast_sock, mcast_ipAddress);
             }
             else {
                 if(bind_addr != null)
                     mcast_sock.setInterface(bind_addr);
-                 mcast_sock.joinGroup(tmp_addr);
+                 mcast_sock.joinGroup(mcast_ipAddress);
             }
 
             // 3b. Create mcast sender socket
-            if(send_on_all_interfaces || (send_interfaces != null && !send_interfaces.isEmpty())) {
-                List interfaces;
-                NetworkInterface intf;
-                if(send_interfaces != null)
-                    interfaces=send_interfaces;
-                else
-                    interfaces=Util.getAllAvailableInterfaces();
+//            if(send_on_all_interfaces || (send_interfaces != null && !send_interfaces.isEmpty())) {
+                List<NetworkInterface> interfaces=Util.getAllAvailableInterfaces();
+                
+//                if(send_interfaces != null)
+//                    interfaces=send_interfaces;
+//                else
+//                    interfaces=Util.getAllAvailableInterfaces();
                 mcast_send_sockets=new MulticastSocket[interfaces.size()];
                 int index=0;
-                for(Iterator it=interfaces.iterator(); it.hasNext();) {
-                    intf=(NetworkInterface)it.next();
+                for(NetworkInterface intf : interfaces) {
                     mcast_send_sockets[index]=new MulticastSocket();
                     mcast_send_sockets[index].setNetworkInterface(intf);
                     mcast_send_sockets[index].setTimeToLive(ip_ttl);
@@ -569,66 +410,11 @@ public class JOLSR_UDP extends TP implements Runnable {
                     }
                     index++;
                 }
-            }
+//            }
         }
 
         setBufferSizes();
         if(log.isDebugEnabled()) log.debug("socket information:\n" + dumpSocketInfo());
-    }
-
-
-
-
-    private String dumpSocketInfo() throws Exception {
-        StringBuilder sb=new StringBuilder(128);
-        sb.append("local_addr=").append(local_addr);
-        sb.append(", mcast_addr=").append(mcast_addr);
-        sb.append(", bind_addr=").append(bind_addr);
-        sb.append(", ttl=").append(ip_ttl);
-
-        if(sock != null) {
-            sb.append("\nsock: bound to ");
-            sb.append(sock.getLocalAddress().getHostAddress()).append(':').append(sock.getLocalPort());
-            sb.append(", receive buffer size=").append(sock.getReceiveBufferSize());
-            sb.append(", send buffer size=").append(sock.getSendBufferSize());
-        }
-
-        if(mcast_sock != null) {
-            sb.append("\nmcast_sock: bound to ");
-            sb.append(mcast_sock.getInterface().getHostAddress()).append(':').append(mcast_sock.getLocalPort());
-            sb.append(", send buffer size=").append(mcast_sock.getSendBufferSize());
-            sb.append(", receive buffer size=").append(mcast_sock.getReceiveBufferSize());
-        }
-
-
-        if(mcast_send_sockets != null) {
-            sb.append("\n").append(mcast_send_sockets.length).append(" mcast send sockets:\n");
-            MulticastSocket s;
-            for(int i=0; i < mcast_send_sockets.length; i++) {
-                s=mcast_send_sockets[i];
-                sb.append(s.getInterface().getHostAddress()).append(':').append(s.getLocalPort());
-                sb.append(", send buffer size=").append(s.getSendBufferSize());
-                sb.append(", receive buffer size=").append(s.getReceiveBufferSize()).append("\n");
-            }
-        }
-        return sb.toString();
-    }
-
-
-    private void setBufferSize(DatagramSocket sock, int send_buf_size, int recv_buf_size) {
-        try {
-            sock.setSendBufferSize(send_buf_size);
-        }
-        catch(Throwable ex) {
-            if(log.isWarnEnabled()) log.warn("failed setting send buffer size of " + send_buf_size + " in " + sock + ": " + ex);
-        }
-
-        try {
-            sock.setReceiveBufferSize(recv_buf_size);
-        }
-        catch(Throwable ex) {
-            if(log.isWarnEnabled()) log.warn("failed setting receive buffer size of " + recv_buf_size + " in " + sock + ": " + ex);
-        }
     }
 
 
@@ -665,7 +451,7 @@ public class JOLSR_UDP extends TP implements Runnable {
 
     /** Creates a DatagramSocket with a random port. Because in certain operating systems, ports are reused,
      * we keep a list of the n last used ports, and avoid port reuse */
-    protected DatagramSocket createEphemeralDatagramSocket() throws SocketException {
+    protected DatagramSocket createEphemeralDatagramSocket() {
         DatagramSocket tmp;
         int localPort=0;
         while(true) {
@@ -683,7 +469,7 @@ public class JOLSR_UDP extends TP implements Runnable {
                 break;
             localPort=tmp.getLocalPort();
             if(last_ports_used == null)
-                last_ports_used=new BoundedList(num_last_ports);
+                last_ports_used=new BoundedList<>(num_last_ports);
             if(last_ports_used.contains(new Integer(localPort))) {
                 if(log.isDebugEnabled())
                     log.debug("local port " + localPort + " already seen in this session; will try to get other port");
@@ -698,39 +484,22 @@ public class JOLSR_UDP extends TP implements Runnable {
         return tmp;
     }
 
-
-    protected void handleConfigEvent(HashMap map) {
-        boolean set_buffers=false;
-        super.handleConfigEvent(map);
-        if(map == null) return;
-
-        if(map.containsKey("send_buf_size")) {
-            mcast_send_buf_size=((Integer)map.get("send_buf_size")).intValue();
-            ucast_send_buf_size=mcast_send_buf_size;
-            set_buffers=true;
-        }
-        if(map.containsKey("recv_buf_size")) {
-            mcast_recv_buf_size=((Integer)map.get("recv_buf_size")).intValue();
-            ucast_recv_buf_size=mcast_recv_buf_size;
-            set_buffers=true;
-        }
-        if(set_buffers)
-            setBufferSizes();
-    }
-
-
-    protected void setThreadNames() {
+    @Override
+	protected void setThreadNames() {
         super.setThreadNames();
 
         if(thread_naming_pattern != null) {
-        	thread_naming_pattern.renameThread(MCAST_RECEIVER_THREAD_NAME, mcast_receiver);
+//        	thread_naming_pattern.renameThread(MCAST_RECEIVER_THREAD_NAME, mcast_receiver); // FIXME
+        	mcast_receiver.setName(MCAST_RECEIVER_THREAD_NAME);
         	if(ucast_receiver != null)
-        		thread_naming_pattern.renameThread(UcastReceiver.UCAST_RECEIVER_THREAD_NAME, ucast_receiver.getThread());
+//        		thread_naming_pattern.renameThread(UcastReceiver.UCAST_RECEIVER_THREAD_NAME, ucast_receiver.getThread());
+        		ucast_receiver.getThread().setName(UcastReceiver.UCAST_RECEIVER_THREAD_NAME);
         }
     }
 
 
-    protected void unsetThreadNames() {
+    @Override
+	protected void unsetThreadNames() {
         super.unsetThreadNames();
         if(mcast_receiver != null)
         	mcast_receiver.setName(MCAST_RECEIVER_THREAD_NAME);
@@ -742,7 +511,8 @@ public class JOLSR_UDP extends TP implements Runnable {
 
 
 
-    void closeMulticastSocket() {
+    @Override
+	void closeMulticastSocket() {
         if(mcast_sock != null) {
             try {
                 if(mcast_addr != null) {
@@ -753,6 +523,7 @@ public class JOLSR_UDP extends TP implements Runnable {
                 if(log.isDebugEnabled()) log.debug("multicast socket closed");
             }
             catch(IOException ex) {
+            	// ignore
             }
             mcast_addr=null;
         }
@@ -781,7 +552,8 @@ public class JOLSR_UDP extends TP implements Runnable {
     }
 
 
-    void setBufferSizes() {
+    @Override
+	void setBufferSizes() {
         if(sock != null)
             setBufferSize(sock, ucast_send_buf_size, ucast_recv_buf_size);
 
@@ -798,13 +570,16 @@ public class JOLSR_UDP extends TP implements Runnable {
     /**
      * Starts the unicast and multicast receiver threads
      */
-    void startThreads() throws Exception {
+    @Override
+	protected
+	void startThreads() throws Exception {
         if(ucast_receiver == null) {
             //start the listener thread of the ucast_recv_sock
             ucast_receiver=new UcastReceiver();
             ucast_receiver.start();
             if(thread_naming_pattern != null)
-                thread_naming_pattern.renameThread(UcastReceiver.UCAST_RECEIVER_THREAD_NAME, ucast_receiver.getThread());
+//                thread_naming_pattern.renameThread(UcastReceiver.UCAST_RECEIVER_THREAD_NAME, ucast_receiver.getThread());
+        		ucast_receiver.getThread().setName(UcastReceiver.UCAST_RECEIVER_THREAD_NAME);
             if(log.isDebugEnabled())
                 log.debug("created unicast receiver thread " + ucast_receiver.getThread());
         }
@@ -820,10 +595,11 @@ public class JOLSR_UDP extends TP implements Runnable {
             }
 
             if(mcast_receiver == null) {
-                mcast_receiver=new Thread(Util.getGlobalThreadGroup(), this, MCAST_RECEIVER_THREAD_NAME);
+                mcast_receiver=new Thread(this, MCAST_RECEIVER_THREAD_NAME);
                 mcast_receiver.setPriority(Thread.MAX_PRIORITY); // needed ????
                 if(thread_naming_pattern != null)
-                    thread_naming_pattern.renameThread(MCAST_RECEIVER_THREAD_NAME, mcast_receiver);
+//                    thread_naming_pattern.renameThread(MCAST_RECEIVER_THREAD_NAME, mcast_receiver);
+                	mcast_receiver.setName(MCAST_RECEIVER_THREAD_NAME);
                 // mcast_receiver.setDaemon(true);
                 mcast_receiver.start();
                 if(log.isDebugEnabled())
@@ -836,7 +612,9 @@ public class JOLSR_UDP extends TP implements Runnable {
     /**
      * Stops unicast and multicast receiver threads
      */
-    void stopThreads() {
+    @Override
+	protected
+	void stopThreads() {
         Thread tmp;
 
         // 1. Stop the multicast receiver thread
@@ -884,7 +662,8 @@ public class JOLSR_UDP extends TP implements Runnable {
         }
 
 
-        public void run() {
+        @Override
+		public void run() {
             DatagramPacket  packet;
             byte            receive_buf[]=new byte[65535];
             int             offset, len;
@@ -920,7 +699,7 @@ public class JOLSR_UDP extends TP implements Runnable {
                                       receive_buf.length + "): will not be able to handle packet. " +
                                       "Use the FRAG protocol and make its frag_size lower than " + receive_buf.length);
                     }
-                    receive(local_addr, sender, data, offset, len);
+                    receive(sender, data, offset, len);
                 }
                 catch(SocketException sock_ex) {
                     if(log.isDebugEnabled()) log.debug("unicast receiver socket is closed, exception=" + sock_ex);
@@ -940,7 +719,7 @@ public class JOLSR_UDP extends TP implements Runnable {
 
         public void start() {
             if(thread == null) {
-                thread=new Thread(Util.getGlobalThreadGroup(), this, UCAST_RECEIVER_THREAD_NAME);
+                thread=new Thread(this, UCAST_RECEIVER_THREAD_NAME);
                 // thread.setDaemon(true);
                 running=true;
                 thread.start();

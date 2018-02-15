@@ -2,6 +2,7 @@ package urv.app;
 
 import java.io.File;
 
+import org.apache.logging.log4j.util.PropertiesUtil;
 
 import urv.conf.PropertiesLoader;
 import urv.emulator.VirtualNetworkInformation;
@@ -86,11 +87,13 @@ public class AppLauncher {
 		String log4jPropertiesFile = "log4j.properties";
 		File f = new File(log4jPropertiesFile);
 		if (f.exists()){
-			PropertyConfigurator.configure(log4jPropertiesFile);
-		} else {
-			BasicConfigurator.configure();
+			new PropertiesUtil(log4jPropertiesFile);
+//			PropertyConfigurator.configure(log4jPropertiesFile);
+//		} else {
+//			BasicConfigurator.configure();
 		}
 	}
+	
 	private Application newApplicationInstance(){
 		Application app = null;
 		try {
@@ -98,8 +101,8 @@ public class AppLauncher {
 			Object newObj = Class.forName(applicationClass).newInstance();
 			if (newObj instanceof Application){
 				app = (Application)newObj;
+				app.registerAppLauncher(this);
 			}
-			app.registerAppLauncher(this);
 		} catch (InstantiationException e) {
 			e.printStackTrace();
 		} catch (IllegalAccessException e) {
@@ -109,7 +112,8 @@ public class AppLauncher {
 		}
 		return app;
 	}
-	private void registerDumpingClasses() {
+	
+	private static void registerDumpingClasses() {
 		Log log = Log.getInstance();
 
 		log.registerDumpingClass(NeighborTable.class.getName());
@@ -117,6 +121,7 @@ public class AppLauncher {
 		log.registerDumpingClass(TopologyInformationBaseTable.class.getName());
 		log.registerDumpingClass(MprSet.class.getName());
 	}
+	
 	private void startEmulation() {
 		VirtualNetworkInformation vni = emulationController.getVirtualNetworkInformation();
 		int networkSize = vni.getNetworkSize();
@@ -125,6 +130,7 @@ public class AppLauncher {
 			channelGenerator.registerApplicationId(app, new Integer(i));
 			//Launch each application in a new Thread
 			new Thread(){
+				@Override
 				public void run(){
 					app.start();
 				}
@@ -136,12 +142,13 @@ public class AppLauncher {
 			}
 			//Wait for the application to initialize (not necessary, just to clarify output on console)
 		}
-	}	
+	}
+	
 	private void startEmulationTasks(){
 		String[] tasks = PropertiesLoader.getEmulationTasks();
 		for (int i=0;i<tasks.length;i++){
 			try {
-				Class taskClass = Class.forName(tasks[i]);
+				Class<?> taskClass = Class.forName(tasks[i]);
 				Object taskObj = taskClass.newInstance();
 				if (taskObj instanceof EmulatorTask){
 					((EmulatorTask)taskObj).setEmulationController(emulationController);
@@ -157,6 +164,7 @@ public class AppLauncher {
 
 		}
 	}
+	
 	private void startRealApplication() {
 		Application app = newApplicationInstance();
 		app.start();

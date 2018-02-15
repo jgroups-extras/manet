@@ -43,11 +43,11 @@ public class GroupPanel extends JPanel {
 
 	private JTabbedPane jTabbedPaneChats = null;
 	private JButton jButtonStartChat = null;
-	private JList jListGroupMembers = null;  //  @jve:decl-index=0:visual-constraint="610,10"
+	private JList<String> jListGroupMembers = null;  //  @jve:decl-index=0:visual-constraint="610,10"
 	private JScrollPane jScrollPaneGroupMembers = null;
-	private DefaultListModel listModelMembers = null;  //  @jve:decl-index=0:visual-constraint="606,638"
+	private DefaultListModel<String> listModelMembers = null;  //  @jve:decl-index=0:visual-constraint="606,638"
 	private Object lock = new Object();  //  @jve:decl-index=0:
-	private MChannel groupChannel = null;
+	MChannel groupChannel = null;
 	private String groupAddr = "";  //  @jve:decl-index=0:
 	private RefreshGroupMembersThread refreshThread = null;  //  @jve:decl-index=0:
 	private GraphPanel netGraphPanel = null;
@@ -106,11 +106,11 @@ public class GroupPanel extends JPanel {
 	/*
 	 * Method that adds a new member to the list only if it's not already in the list
 	 */
-	private void addMemberToList(String inetAddr,DefaultListModel list){
+	private void addMemberToList(String inetAddr,DefaultListModel<String> list){
 		synchronized(lock){
 			int size = list.getSize();
 			for (int i=0;i<size;i++){
-				String element = (String)list.getElementAt(i);
+				String element = list.getElementAt(i);
 				if (element.equals(inetAddr)){
 					return;
 				}
@@ -201,9 +201,9 @@ public class GroupPanel extends JPanel {
 	 *
 	 * @return javax.swing.JList
 	 */
-	private JList getJListGroupMembers() {
+	private JList<String> getJListGroupMembers() {
 		if (jListGroupMembers == null) {
-			jListGroupMembers = new JList(getListModelMembers());
+			jListGroupMembers = new JList<String>(getListModelMembers());
 			jListGroupMembers.setBounds(new Rectangle(16, 14, 120, 500));
 			jListGroupMembers.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 			
@@ -263,9 +263,9 @@ public class GroupPanel extends JPanel {
 	 *
 	 * @return javax.swing.DefaultListModel
 	 */
-	private DefaultListModel getListModelMembers() {
+	private DefaultListModel<String> getListModelMembers() {
 		if (listModelMembers == null) {
-			listModelMembers = new DefaultListModel();
+			listModelMembers = new DefaultListModel<String>();
 		}
 		return listModelMembers;
 	}
@@ -282,7 +282,7 @@ public class GroupPanel extends JPanel {
         jPanel1 = new javax.swing.JPanel();
         jLabelListMembers = new javax.swing.JLabel();
         jScrollPaneGroupMembers = new javax.swing.JScrollPane();
-        jListGroupMembers = new javax.swing.JList(getListModelMembers());
+        jListGroupMembers = new javax.swing.JList<String>(getListModelMembers());
         jPanel2 = new javax.swing.JPanel();
         jPanel3 = new javax.swing.JPanel();
         jButtonStartChat = new javax.swing.JButton();
@@ -429,7 +429,7 @@ public class GroupPanel extends JPanel {
 					}
 					
 					//If it's my own message, don't print it
-					if (!msg.getDest().isMulticastAddress() || !msg.getSrc().equals(groupChannel.getLocalAddress())){
+					if (!((InetAddress) msg.getDest()).isMulticastAddress() || !msg.getSrc().equals(groupChannel.getLocalAddress())){
 						((ChatPanel)jTabbedPaneChats.getComponentAt(numTab)).addChatMsg("["+shortName(msg.getSrc().toString())+"] "+str);
 					}
 					
@@ -502,14 +502,14 @@ public class GroupPanel extends JPanel {
 	 * Method that removes the elements from the listModelMembers that don't appear in the vInetAddr
 	 * Remove the exceeded elements
 	 */
-	private void removeOldMembersFromList(List<InetAddress> vInetAddr, DefaultListModel list){
+	private void removeOldMembersFromList(List<InetAddress> vInetAddr, DefaultListModel<String> list){
 		boolean remove = true;
 
 		for(int i=0; i<list.size();i++){
 			remove=true;
 			for(int j=0; j<vInetAddr.size(); j++){
 				//System.out.println((String)list.getElementAt(i)+" = "+vInetAddr.get(j).getHostAddress());
-				if(((String)list.getElementAt(i)).equals(vInetAddr.get(j).getHostAddress())){
+				if(list.getElementAt(i).equals(vInetAddr.get(j).getHostAddress())){
 					remove = false;
 					break;
 				}
@@ -525,7 +525,7 @@ public class GroupPanel extends JPanel {
 	 * Method that creats a new chat tab if it is necessary
 	 */
 	private void startNewChat(){
-		String addr = (String)jListGroupMembers.getSelectedValue();
+		String addr = jListGroupMembers.getSelectedValue();
 		if(addr.length()!=0){
 			if(existTab(addr,true)==-1){//if the tab with that title exists, create a new chat tab
 				jTabbedPaneChats.add(addr, new ChatPanel(jTabbedPaneChats,groupAddr,addr, groupChannel));
@@ -556,7 +556,7 @@ public class GroupPanel extends JPanel {
 					contPajek++;
 					if(contMembers%refreshMembersPeriod == 0){//Every refresh member period
 						contMembers=0;
-						String elementSelected = (String)jListGroupMembers.getSelectedValue();
+						String elementSelected = jListGroupMembers.getSelectedValue();
 	
 						for(int i=0; i<groupChannel.getInetAddressesOfGroupMebers().size();i++){//adds the new members
 							addMemberToList(groupChannel.getInetAddressesOfGroupMebers().get(i).getHostAddress(),listModelMembers);
