@@ -1,15 +1,18 @@
 package urv.machannel;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.net.InetAddress;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.jgroups.JChannel;
+
 import urv.app.Application;
 import urv.conf.ApplicationConfig;
 import urv.conf.PropertiesLoader;
 import urv.emulator.core.EmulationController;
 import urv.olsr.mcast.MulticastAddress;
-
-import java.net.InetAddress;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * This class is responsible of create MChannel instances.
@@ -115,28 +118,32 @@ public class ChannelGenerator {
 	 * @return Channel
 	 */
 	private JChannel createJChannel(String props) {
+		InputStream propertyInputStream = new ByteArrayInputStream(props.getBytes());
 		JChannel c = null;
 		try{
-			c = new JChannel(props);
+			c = new JChannel(propertyInputStream);
 		    c.connect(channelName);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return c;
-	}		
+	}
+	
 	/**
 	 * This method is used to print the properties loaded on the channel
 	 * 
 	 * @param txt
 	 */
 	private static void print(String txt){
+		String s = txt;
 		while (true){
-			if (txt.length()>80){
-				String substring = txt.substring(0, 80);
+			// Wrap lines to 80 characters wide
+			if (s.length()>80){
+				String substring = s.substring(0, 80);
 				System.out.println(substring);
-				txt = txt.substring(80, txt.length());
+				s = s.substring(80, s.length());
 			}else{
-				System.out.println(txt);
+				System.out.println(s);
 				break;
 			}
 		}

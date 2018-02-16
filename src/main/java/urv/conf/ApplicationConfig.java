@@ -25,6 +25,12 @@ public class ApplicationConfig {
 	public static byte[] emulatedIPs = new byte[]{(byte)192,(byte)168,(byte)145,(byte)1};
 	public static Address BROADCAST_ADDRESS;
 
+	static final String XML_HEADER = "<config xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" + 
+			"        xmlns=\"urn:org:jgroups\"\n" + 
+			"        xsi:schemaLocation=\"urn:org:jgroups http://www.jgroups.org/schema/jgroups.xsd\">\n" + 
+			"";
+	static final String XML_TRAILER = "</config>\n";
+	
 	static{
 		InetAddress broadcastInetAddress = null;
 		try {
@@ -42,57 +48,59 @@ public class ApplicationConfig {
 	 */
 	public static String getProtocolStackConfig(int nodeNumber,int port){
 		if (PropertiesLoader.isEmulated()){
-			return getEMU_UDP(nodeNumber, port)+":"
-			+getOLSR(null)+":"+getFC()+":"+getFRAG2();
-		} else {
-			return getJOLSR_UDP(port)+":"+
-				getOLSR(null)+":"+getFC()+":"+getFRAG2();
+			return XML_HEADER + getEMU_UDP(nodeNumber, port)+"\n"
+			+getOLSR(null)+"\n"+getFC()+"\n"+getFRAG2() + "\n" + XML_TRAILER;
 		}
+		return XML_HEADER + getJOLSR_UDP(port)+"\n"+
+			getOLSR(null)+"\n"+getFC()+"\n"+getFRAG2() + "\n" + XML_TRAILER;
 	}
 	/**
 	 * Protocol stack WITH multicast protocol
 	 */
 	public static String getProtocolStackConfig(int nodeNumber, int port, InetAddress group) {
-		StringBuffer stack = new StringBuffer();
-		
+		StringBuilder stack = new StringBuilder();
+		stack.append(XML_HEADER);
 		if (PropertiesLoader.isEmulated()){			
-			stack.append(getEMU_UDP(nodeNumber, port));	
+			stack.append(getEMU_UDP(nodeNumber, port)+"\n");	
 			if (PropertiesLoader.isDynamicCredit() &&
 				PropertiesLoader.isThroughputOptimizationNetworkSelfKnowledgementEnabled()){
-				stack.append(":"+getBW_CALC());
+				stack.append(getBW_CALC()+"\n");
 			}
-			stack.append(":"+getOLSR(group));				
+			stack.append(getOLSR(group)+"\n");				
 			if (PropertiesLoader.isReliabilityEnabled()){
-				stack.append(":"+getReliability(nodeNumber));
+				stack.append(getReliability(nodeNumber)+"\n");
 			}
-			stack.append(":"+getMulticastProtocol(group));
-			stack.append(":"+getFC());
-			stack.append(":"+getFRAG2());
+			stack.append(getMulticastProtocol(group)+"\n");
+			stack.append(getFC()+"\n");
+			stack.append(getFRAG2()+"\n");
 		}else {
-			stack.append(getJOLSR_UDP(port));
+			stack.append(getJOLSR_UDP(port)+"/>");
 			if (PropertiesLoader.isDynamicCredit() &&
 				PropertiesLoader.isThroughputOptimizationNetworkSelfKnowledgementEnabled()){
-				stack.append(":"+getBW_CALC());
+				stack.append(getBW_CALC()+"\n");
 			}			
-			stack.append(":"+getOLSR(group));				
+			stack.append(getOLSR(group)+"\n");				
 			if (PropertiesLoader.isReliabilityEnabled()){
-				stack.append(":"+getReliability(nodeNumber));
+				stack.append(getReliability(nodeNumber)+"\n");
 			}
-			stack.append(":"+getMulticastProtocol(group));
-			stack.append(":"+getFC());
-			stack.append(":"+getFRAG2());
+			stack.append(getMulticastProtocol(group)+"\n");
+			stack.append(getFC()+"\n");
+			stack.append(getFRAG2()+"\n");
 		}
+		stack.append(XML_TRAILER);
 		return stack.toString();
 	}
 	
 	//	PRIVATE METODS --
 	
 	private static String getBW_CALC (){
-		StringBuffer buff = new StringBuffer();
-		buff.append("BW_CALC("
-		+"info_millis=2000;"
-		+"minimumCapacityInBytes=180000;"
-		+"minimumCapacityInMessages=100)");
+		StringBuilder buff = new StringBuilder();
+		buff.append("<"
+		+"BW_CALC "
+		+"info_millis=\"2000\" "
+		+"minimumCapacityInBytes=\"180000\" "
+		+"minimumCapacityInMessages=\"100\" "
+		+"/>\n");
 		return buff.toString();
 	}
 	
@@ -104,17 +112,19 @@ public class ApplicationConfig {
 	 * @return emulation transport protocol
 	 */
 	private static String getEMU_UDP(int nodeNumber, int port){
-		StringBuffer buff = new StringBuffer();
+		StringBuilder buff = new StringBuilder();
 		String emu_node_id = nodeNumber+"";
 		String emu_port = port + "";
 
-		buff.append("EMU_UDP("
-		+ "mcast_send_buf_size=640000;discard_incompatible_packets=true;ucast_recv_buf_size=20000000;"
-		+ "loopback=true;mcast_recv_buf_size=25000000;max_bundle_size=64000;max_bundle_timeout=30;"
-		+ "ucast_send_buf_size=640000;tos=16;enable_bundling=false;ip_ttl=32;"
-		+ "port_range=1000;"
-		+ "emu_node_id="+emu_node_id+";"
-		+ "emu_port="+emu_port+")");
+		buff.append("<"
+		+"EMU_UDP "
+		+ "mcast_send_buf_size=\"640000\" discard_incompatible_packets=\"true\" ucast_recv_buf_size=\"20000000\" "
+		+ "loopback=\"true\" mcast_recv_buf_size=\"25000000\" max_bundle_size=\"64000\" max_bundle_timeout=\"30\" "
+		+ "ucast_send_buf_size=\"640000\" tos=\"16\" enable_bundling=\"false\" ip_ttl=\"32\" "
+		+ "port_range=\"1000\" "
+		+ "emu_node_id=\""+emu_node_id+"\" "
+		+ "emu_port=\""+emu_port+"\" "
+		+ "/>\n");
 
 		return buff.toString();
 	}	
@@ -123,47 +133,52 @@ public class ApplicationConfig {
 	 */
 	private static String getFC (){
 		//Note: FC.min_credits must to be > than FRAG2.frag_size
-		return "FC(max_credits=150000;lowest_max_credits=110000;min_credits=60000;min_threshold=0.25)";
+		return "<"
+				+"FC max_credits=\"150000\" lowest_max_credits=\"110000\" min_credits=\"60000\" min_threshold=\"0.25\" "
+				+"/>\n";
 	}
 	/**
 	 * Protocol used to fragment big amounts of information in smaller packets
 	 */
 	private static String getFRAG2 (){
 		//Note: FC.min_credits must to be > than FRAG2.frag_size
-		return "FRAG2(frag_size=50000;" + "down_thread=false;up_thread=false)";
+		return "<"
+				+"FRAG2 frag_size=\"50000\" " // + "down_thread=\"false\" up_thread=\"false\" "
+				+"/>\n";
 	}
 	private static String getJOLSR_UDP(int port){
-		return "JOLSR_UDP(" +
-		"bind_port="+port+";"+
-		"tos=8;" +
-		"port_range=1000;" +
-		"ucast_recv_buf_size=64000000;" +
-		"ucast_send_buf_size=64000000;" +
-		"loopback=false;" +
-		"discard_incompatible_packets=true;" +
-		"max_bundle_size=64000;" +
-		"max_bundle_timeout=30;" +
-		"use_incoming_packet_handler=true;" +
-		"ip_ttl=32;" +
-		"enable_bundling=true;" +
-		"enable_diagnostics=false;" +
-		"thread_naming_pattern=cl;" +		
-		"use_concurrent_stack=true;" +		
-		"thread_pool.enabled=true;" +
-		"thread_pool.min_threads=2;" +
-		"thread_pool.max_threads=8;" +
-		"thread_pool.keep_alive_time=5000;" +
-		"thread_pool.queue_enabled=true;" +
-		"thread_pool.queue_max_size=1000;" +
-		"thread_pool.rejection_policy=discard;" +
-        "oob_thread_pool.enabled=true;" +
-        "oob_thread_pool.min_threads=1;" +
-        "oob_thread_pool.max_threads=8;" +
-        "oob_thread_pool.keep_alive_time=5000;" +
-        "oob_thread_pool.queue_enabled=false;" +
-        "oob_thread_pool.queue_max_size=100;" +
-        "oob_thread_pool.rejection_policy=Run" +
-        ")";
+		return "<" +
+		"JOLSR_UDP " +
+		"bind_port=\""+port+"\" "+
+		"tos=\"8\" " +
+		"port_range=\"1000\" " +
+		"ucast_recv_buf_size=\"64000000\" " +
+		"ucast_send_buf_size=\"64000000\" " +
+		"loopback=\"false\" " +
+		"discard_incompatible_packets=\"true\" " +
+		"max_bundle_size=\"64000\" " +
+		"max_bundle_timeout=\"30\" " +
+		"use_incoming_packet_handler=\"true\" " +
+		"ip_ttl=\"32\" " +
+		"enable_bundling=\"true\" " +
+		"enable_diagnostics=\"false\" " +
+		"thread_naming_pattern=\"cl\" " +		
+		"use_concurrent_stack=\"true\" " +		
+		"thread_pool.enabled=\"true\" " +
+		"thread_pool.min_threads=\"2\" " +
+		"thread_pool.max_threads=\"8\" " +
+		"thread_pool.keep_alive_time=\"5000\" " +
+		"thread_pool.queue_enabled=\"true\" " +
+		"thread_pool.queue_max_size=\"1000\" " +
+		"thread_pool.rejection_policy=\"discard\" " +
+        "oob_thread_pool.enabled=\"true\" " +
+        "oob_thread_pool.min_threads=\"1\" " +
+        "oob_thread_pool.max_threads=\"8\" " +
+        "oob_thread_pool.keep_alive_time=\"5000\" " +
+        "oob_thread_pool.queue_enabled=\"false\" " +
+        "oob_thread_pool.queue_max_size=\"100\" " +
+        "oob_thread_pool.rejection_policy=\"Run\" " +
+        "/>\n";
 	}
 	private static String getMulticastProtocol(InetAddress group){
 		String multicastProtocol = PropertiesLoader.getMulticastProtocol();
@@ -179,13 +194,19 @@ public class ApplicationConfig {
 	private static String getOLSR(InetAddress group){
 		if (group==null){
 			// Using OLSR without upper multicast protocol
-			return "OLSR";
-		} else {
-			return "OLSR(mcast_addr="+group.getHostAddress()+")";
+			return "<"
+					+"OLSR"
+					+"/>\n";
 		}
+		return "<"
+				+"OLSR mcast_addr=\""+group.getHostAddress()+"\" "
+				+"/>";
 	}
 	private static String getOMOLSR(InetAddress group){
-		return "OMOLSR(mcast_addr="+group.getHostAddress()+")";  /*;bc_port=5555*/ // ;bcast_min_neigh=3
+		return "<"
+				+"OMOLSR mcast_addr=\""+group.getHostAddress()+"\" "
+				+"/>\n";
+		/*;bc_port=5555*/ // ;bcast_min_neigh=3
 		// TODO Maybe we could pass a multicast port number (that obviously will not be used) only for transparency purposes
 	}
 	/**
@@ -194,10 +215,15 @@ public class ApplicationConfig {
 	 * @return reliable transmission protocol
 	 */
 	private static String getReliability(int nodeNumber){
-		return "JOLSR_UNICAST(timeout=1200,1800,2400,5000,8000;use_gms=false)";
+		return "<"
+				+"JOLSR_UNICAST timeout=\"1200,1800,2400,5000,8000\" use_gms=\"false\" "
+				+"/>";
 	}
+	
 	private static String getSMCAST(InetAddress group){
-		return "SMCAST(mcast_addr="+group.getHostAddress()+")"; 
+		return "<"
+				+"SMCAST mcast_addr=\""+group.getHostAddress()+"\" "
+				+"/>"; 
 		//TODO Maybe we could pass a multicast port number (that obviously will not be used) only for transparency purposes
 	}
 }

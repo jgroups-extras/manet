@@ -39,6 +39,7 @@ public class SMCAST extends Protocol {
 	public SMCAST(){}		
 		
 
+	@Override
 	public Object down(Message msg) {
 
         Address dest = msg.getDest();
@@ -81,11 +82,13 @@ public class SMCAST extends Protocol {
 
 
 
+	@Override
 	public void start() throws Exception{
 		super.start();
 	}
 	
-	 public void stop() {
+	 @Override
+	public void stop() {
 	}
 	
 	/**
@@ -97,6 +100,7 @@ public class SMCAST extends Protocol {
      * the stack using {@code down_prot.down()} or c) the event (or another event) is sent up
      * the stack using {@code up_prot.up()}.
      */
+	@Override
 	public Object up(Event evt) {
 		Message msg, rsp_msg;
 		Object obj;
@@ -141,7 +145,8 @@ public class SMCAST extends Protocol {
 		}
 	}
 
-    public Object up(Message msg) {
+    @Override
+	public Object up(Message msg) {
 
         // getHeader from protocol name
         Object obj=msg.getHeader(id);

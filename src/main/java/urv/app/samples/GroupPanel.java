@@ -1,18 +1,14 @@
 package urv.app.samples;
 
-import org.jgroups.Message;
-import org.jgroups.Receiver;
-import org.jgroups.ReceiverAdapter;
-import urv.app.messages.FileMessage;
-import urv.app.messages.SoundMessage;
-import urv.conf.PropertiesLoader;
-import urv.machannel.MChannel;
-import urv.util.audio.AudioUtils;
-import urv.util.date.DateUtils;
-import urv.util.file.FileUtils;
-
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -21,32 +17,58 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
 
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
+import org.jgroups.Message;
+import org.jgroups.Receiver;
+import org.jgroups.ReceiverAdapter;
+
+import urv.app.messages.FileMessage;
+import urv.app.messages.SoundMessage;
+import urv.conf.PropertiesLoader;
+import urv.machannel.MChannel;
+import urv.util.audio.AudioUtils;
+import urv.util.date.DateUtils;
+import urv.util.file.FileUtils;
+
 
 public class GroupPanel extends JPanel {
 
 	private static final long serialVersionUID = 1L;
-	private static int refreshMembersPeriod = 3;
-	private static int refreshPajekFilePeriod = 5;
+	static int refreshMembersPeriod = 3;
+	static int refreshPajekFilePeriod = 5;
 	private static String ChannelID = PropertiesLoader.getChannelId();  //  @jve:decl-index=0:
 
-	private JTabbedPane jTabbedPaneChats = null;
+	JTabbedPane jTabbedPaneChats = null;
 	private JButton jButtonStartChat = null;
-	private JList jListGroupMembers = null;  //  @jve:decl-index=0:visual-constraint="610,10"
+	JList<String> jListGroupMembers = null;  //  @jve:decl-index=0:visual-constraint="610,10"
 	private JScrollPane jScrollPaneGroupMembers = null;
-	private DefaultListModel listModelMembers = null;  //  @jve:decl-index=0:visual-constraint="606,638"
+	private DefaultListModel<String> listModelMembers = null;  //  @jve:decl-index=0:visual-constraint="606,638"
 	private Object lock = new Object();  //  @jve:decl-index=0:
-	private MChannel groupChannel = null;
-	private String groupAddr = "";  //  @jve:decl-index=0:
+	MChannel groupChannel = null;
+	String groupAddr = "";  //  @jve:decl-index=0:
 	private RefreshGroupMembersThread refreshThread = null;  //  @jve:decl-index=0:
-	private GraphPanel netGraphPanel = null;
+	GraphPanel netGraphPanel = null;
 	private JButton jButtonCloseGroupPanel = null;
-	private JTabbedPane tabPanel = null;
+	JTabbedPane tabPanel = null;
 	
-	private JPanel me = null;
+	JPanel me = null;
 	private JTextField jTextFieldIpUnicast = null;
 	private JLabel jLabelListMembers = null;
-	private JLabel jLabelNewMsg = null;
-	private int newMessages = 0;
+	JLabel jLabelNewMsg = null;
+	int newMessages = 0;
 	private JSplitPane jSplitPane1;
 	private JPanel jPanel1;
 	private JPanel jPanel2;
@@ -56,7 +78,6 @@ public class GroupPanel extends JPanel {
 	 * This is the default constructor
 	 */
 	public GroupPanel(JTabbedPane tabPanel, MChannel groupChannel, String groupAddr) {
-		super();
 		this.groupChannel=groupChannel;
 		this.groupAddr = groupAddr;
 		this.tabPanel = tabPanel;		
@@ -94,11 +115,11 @@ public class GroupPanel extends JPanel {
 	/*
 	 * Method that adds a new member to the list only if it's not already in the list
 	 */
-	private void addMemberToList(String inetAddr,DefaultListModel list){
+	private void addMemberToList(String inetAddr,DefaultListModel<String> list){
 		synchronized(lock){
 			int size = list.getSize();
 			for (int i=0;i<size;i++){
-				String element = (String)list.getElementAt(i);
+				String element = list.getElementAt(i);
 				if (element.equals(inetAddr)){
 					return;
 				}
@@ -111,7 +132,7 @@ public class GroupPanel extends JPanel {
 	/**
 	 * Method that test if the tab with a specific title exists
 	 */
-	private int existTab(String title, boolean select){
+	int existTab(String title, boolean select){
 		for(int i=0;i<jTabbedPaneChats.getTabCount();i++){
 			if (jTabbedPaneChats.getTitleAt(i).equals(title)){
 				if(select) jTabbedPaneChats.setSelectedIndex(i);
@@ -144,6 +165,7 @@ public class GroupPanel extends JPanel {
 			jButtonCloseGroupPanel.setIcon(AppTestUtil.getCloseIcon());
 			jButtonCloseGroupPanel.addActionListener(new java.awt.event.ActionListener() {
 				//Before closing the tab, show a dialog
+				@Override
 				public void actionPerformed(java.awt.event.ActionEvent e) {
 					Object[] options = {"Yes","No"};
 					int n = JOptionPane.showOptionDialog(
@@ -175,6 +197,7 @@ public class GroupPanel extends JPanel {
 			jButtonStartChat.setBounds(new Rectangle(35, 560, 72, 23));
 			jButtonStartChat.setText("Chat");
 			jButtonStartChat.addActionListener(new java.awt.event.ActionListener() {
+				@Override
 				public void actionPerformed(java.awt.event.ActionEvent e) {
 					
 					startNewChat();
@@ -189,14 +212,15 @@ public class GroupPanel extends JPanel {
 	 *
 	 * @return javax.swing.JList
 	 */
-	private JList getJListGroupMembers() {
+	private JList<String> getJListGroupMembers() {
 		if (jListGroupMembers == null) {
-			jListGroupMembers = new JList(getListModelMembers());
+			jListGroupMembers = new JList<>(getListModelMembers());
 			jListGroupMembers.setBounds(new Rectangle(16, 14, 120, 500));
 			jListGroupMembers.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 			
-			jListGroupMembers.addMouseListener(new java.awt.event.MouseAdapter() {
-				public void mouseClicked(java.awt.event.MouseEvent e) {
+			jListGroupMembers.addMouseListener(new MouseAdapter() {
+				@Override
+				public void mouseClicked(MouseEvent e) {
 					if(e.getClickCount()==2){//When a double-click is done on a list element, a chat tab is opened
 						startNewChat();
 					}
@@ -216,8 +240,9 @@ public class GroupPanel extends JPanel {
 		if (jTabbedPaneChats == null) {
 			jTabbedPaneChats = new JTabbedPane();
 			jTabbedPaneChats.setBounds(new Rectangle(143, 15, 400, 200));
-			jTabbedPaneChats.addChangeListener(new javax.swing.event.ChangeListener() {
-				public void stateChanged(javax.swing.event.ChangeEvent e) {//When the selected tab changes
+			jTabbedPaneChats.addChangeListener(new ChangeListener() {
+				@Override
+				public void stateChanged(ChangeEvent e) {//When the selected tab changes
 					if(jTabbedPaneChats.getTabCount()>0 && jTabbedPaneChats.getSelectedIndex()>=0){
 						if(jTabbedPaneChats.getForegroundAt(jTabbedPaneChats.getSelectedIndex()).equals(Color.blue)){//If the new selection has a blue name, it's because it has a new message 
 							jTabbedPaneChats.setForegroundAt(jTabbedPaneChats.getSelectedIndex(),Color.black);
@@ -229,7 +254,7 @@ public class GroupPanel extends JPanel {
 					}
 				}
 			});
-			jTabbedPaneChats.setTabLayoutPolicy(jTabbedPaneChats.SCROLL_TAB_LAYOUT);
+			jTabbedPaneChats.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
 			
 		}
 		return jTabbedPaneChats;
@@ -251,9 +276,9 @@ public class GroupPanel extends JPanel {
 	 *
 	 * @return javax.swing.DefaultListModel
 	 */
-	private DefaultListModel getListModelMembers() {
+	private DefaultListModel<String> getListModelMembers() {
 		if (listModelMembers == null) {
-			listModelMembers = new DefaultListModel();
+			listModelMembers = new DefaultListModel<>();
 		}
 		return listModelMembers;
 	}
@@ -264,57 +289,57 @@ public class GroupPanel extends JPanel {
 	 */
 	private void initialize() {
 		
-		jSplitPane1 = new javax.swing.JSplitPane();
-		jTabbedPaneChats = new javax.swing.JTabbedPane();
-        netGraphPanel = new GraphPanel(groupChannel);;
-        jPanel1 = new javax.swing.JPanel();
-        jLabelListMembers = new javax.swing.JLabel();
-        jScrollPaneGroupMembers = new javax.swing.JScrollPane();
-        jListGroupMembers = new javax.swing.JList(getListModelMembers());
-        jPanel2 = new javax.swing.JPanel();
-        jPanel3 = new javax.swing.JPanel();
-        jButtonStartChat = new javax.swing.JButton();
-        jLabelNewMsg = new javax.swing.JLabel();
-        jButtonCloseGroupPanel = new javax.swing.JButton();
+		jSplitPane1 = new JSplitPane();
+		jTabbedPaneChats = new JTabbedPane();
+        netGraphPanel = new GraphPanel(groupChannel);
+        jPanel1 = new JPanel();
+        jLabelListMembers = new JLabel();
+        jScrollPaneGroupMembers = new JScrollPane();
+        jListGroupMembers = new JList<>(getListModelMembers());
+        jPanel2 = new JPanel();
+        jPanel3 = new JPanel();
+        jButtonStartChat = new JButton();
+        jLabelNewMsg = new JLabel();
+        jButtonCloseGroupPanel = new JButton();
 
         setLayout(new java.awt.BorderLayout());
 
-        jTabbedPaneChats.setTabLayoutPolicy(javax.swing.JTabbedPane.SCROLL_TAB_LAYOUT);
+        jTabbedPaneChats.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
         jSplitPane1.setLeftComponent(jTabbedPaneChats);
 
         jSplitPane1.setRightComponent(netGraphPanel);
 
         add(jSplitPane1, java.awt.BorderLayout.CENTER);
 
-        jPanel3.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT));
+        jPanel3.setLayout(new FlowLayout(FlowLayout.RIGHT));
 
         jButtonCloseGroupPanel.setIcon(AppTestUtil.getCloseIcon()); // NOI18N
         jButtonCloseGroupPanel.setToolTipText("Close this chat");
-        jButtonCloseGroupPanel.setMaximumSize(new java.awt.Dimension(14, 15));
-        jButtonCloseGroupPanel.setMinimumSize(new java.awt.Dimension(14, 15));
-        jButtonCloseGroupPanel.setPreferredSize(new java.awt.Dimension(14, 15));
+        jButtonCloseGroupPanel.setMaximumSize(new Dimension(14, 15));
+        jButtonCloseGroupPanel.setMinimumSize(new Dimension(14, 15));
+        jButtonCloseGroupPanel.setPreferredSize(new Dimension(14, 15));
         jPanel3.add(jButtonCloseGroupPanel);
 
-        add(jPanel3, java.awt.BorderLayout.NORTH);
+        add(jPanel3, BorderLayout.NORTH);
 
-        jPanel1.setLayout(new java.awt.BorderLayout(20, 20));
+        jPanel1.setLayout(new BorderLayout(20, 20));
 
         jLabelListMembers.setText("Group members:");
-        jPanel1.add(jLabelListMembers, java.awt.BorderLayout.NORTH);
+        jPanel1.add(jLabelListMembers, BorderLayout.NORTH);
 
-        jListGroupMembers.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-        jListGroupMembers.setPreferredSize(new java.awt.Dimension(130, 95));
+        jListGroupMembers.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        jListGroupMembers.setPreferredSize(new Dimension(130, 95));
         jScrollPaneGroupMembers.setViewportView(jListGroupMembers);
 
-        jPanel1.add(jScrollPaneGroupMembers, java.awt.BorderLayout.CENTER);
+        jPanel1.add(jScrollPaneGroupMembers, BorderLayout.CENTER);
 
         jButtonStartChat.setText("Chat");
         jPanel2.add(jButtonStartChat);
 
-        jPanel1.add(jPanel2, java.awt.BorderLayout.SOUTH);
+        jPanel1.add(jPanel2, BorderLayout.SOUTH);
 
-        add(jPanel1, java.awt.BorderLayout.WEST);
-        add(jLabelNewMsg, java.awt.BorderLayout.SOUTH);
+        add(jPanel1, BorderLayout.WEST);
+        add(jLabelNewMsg, BorderLayout.SOUTH);
 		
 		//The multicast channel is creted and added in the chat tab panel by default
 		jTabbedPaneChats.add(groupAddr, new ChatPanel(jTabbedPaneChats,groupAddr,groupAddr, groupChannel));
@@ -324,8 +349,9 @@ public class GroupPanel extends JPanel {
 
 		/*============================ setup action listeners =================================*/
 		
-		jTabbedPaneChats.addChangeListener(new javax.swing.event.ChangeListener() {
-			public void stateChanged(javax.swing.event.ChangeEvent e) {//When the selected tab changes
+		jTabbedPaneChats.addChangeListener(new ChangeListener() {
+			@Override
+			public void stateChanged(ChangeEvent e) {//When the selected tab changes
 				if(jTabbedPaneChats.getTabCount()>0 && jTabbedPaneChats.getSelectedIndex()>=0){
 					if(jTabbedPaneChats.getForegroundAt(jTabbedPaneChats.getSelectedIndex()).equals(Color.blue)){//If the new selection has a blue name, it's because it has a new message 
 						jTabbedPaneChats.setForegroundAt(jTabbedPaneChats.getSelectedIndex(),Color.black);
@@ -338,25 +364,28 @@ public class GroupPanel extends JPanel {
 			}
 		});
 		
-		jButtonStartChat.addActionListener(new java.awt.event.ActionListener() {
-			public void actionPerformed(java.awt.event.ActionEvent e) {
+		jButtonStartChat.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
 				
 				startNewChat();
 				
 			}
 		});
 		
-		jListGroupMembers.addMouseListener(new java.awt.event.MouseAdapter() {
-			public void mouseClicked(java.awt.event.MouseEvent e) {
+		jListGroupMembers.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
 				if(e.getClickCount()==2){//When a double-click is done on a list element, a chat tab is opened
 					startNewChat();
 				}
 			}
 		});
 		
-		jButtonCloseGroupPanel.addActionListener(new java.awt.event.ActionListener() {
+		jButtonCloseGroupPanel.addActionListener(new ActionListener() {
 			//Before closing the tab, show a dialog
-			public void actionPerformed(java.awt.event.ActionEvent e) {
+			@Override
+			public void actionPerformed(ActionEvent e) {
 				Object[] options = {"Yes","No"};
 				int n = JOptionPane.showOptionDialog(
 					    me,
@@ -376,7 +405,7 @@ public class GroupPanel extends JPanel {
 	/*
 	 * Method that helps to know if the addr is a correct ip
 	 */
-	private boolean isCorrectIp(String addr){
+	private static boolean isCorrectIp(String addr){
 		// if addr is empty or there's an exception, it's not a correct ip
 		try {
 			if(addr.length()==0) return false; 
@@ -395,10 +424,12 @@ public class GroupPanel extends JPanel {
 			public byte[] getState() {
 				return null;
 			}
+			
 			/*
 			 * Action that is taken when one message is received
 			 * @see org.jgroups.MessageListener#receive(org.jgroups.Message)
 			 */
+			@Override
 			public void receive(Message msg) {
 				Object obj = msg.getObject();
 				if (obj instanceof String){//If we receive a string, it's a message of our application
@@ -417,7 +448,7 @@ public class GroupPanel extends JPanel {
 					}
 					
 					//If it's my own message, don't print it
-					if (msg != null || !msg.getSrc().equals(groupChannel.getLocalAddress())){
+					if (!((InetAddress) msg.getDest()).isMulticastAddress() || !msg.getSrc().equals(groupChannel.getLocalAddress())){
 						((ChatPanel)jTabbedPaneChats.getComponentAt(numTab)).addChatMsg("["+shortName(msg.getSrc().toString())+"] "+str);
 					}
 					
@@ -490,14 +521,14 @@ public class GroupPanel extends JPanel {
 	 * Method that removes the elements from the listModelMembers that don't appear in the vInetAddr
 	 * Remove the exceeded elements
 	 */
-	private void removeOldMembersFromList(List<InetAddress> vInetAddr, DefaultListModel list){
+	private static void removeOldMembersFromList(List<InetAddress> vInetAddr, DefaultListModel<String> list){
 		boolean remove = true;
 
 		for(int i=0; i<list.size();i++){
 			remove=true;
 			for(int j=0; j<vInetAddr.size(); j++){
 				//System.out.println((String)list.getElementAt(i)+" = "+vInetAddr.get(j).getHostAddress());
-				if(((String)list.getElementAt(i)).equals(vInetAddr.get(j).getHostAddress())){
+				if(list.getElementAt(i).equals(vInetAddr.get(j).getHostAddress())){
 					remove = false;
 					break;
 				}
@@ -512,8 +543,8 @@ public class GroupPanel extends JPanel {
 	/*
 	 * Method that creats a new chat tab if it is necessary
 	 */
-	private void startNewChat(){
-		String addr = (String)jListGroupMembers.getSelectedValue();
+	void startNewChat(){
+		String addr = jListGroupMembers.getSelectedValue();
 		if(addr.length()!=0){
 			if(existTab(addr,true)==-1){//if the tab with that title exists, create a new chat tab
 				jTabbedPaneChats.add(addr, new ChatPanel(jTabbedPaneChats,groupAddr,addr, groupChannel));
@@ -529,11 +560,11 @@ public class GroupPanel extends JPanel {
 	private class RefreshGroupMembersThread extends Thread{
 
 		private BufferedWriter f;
-		private long initialTime;
-
+		
 		public RefreshGroupMembersThread(){
 		}
 
+		@Override
 		public void run() {
 			int contMembers = -1;
 			int contPajek = -1;
@@ -544,7 +575,7 @@ public class GroupPanel extends JPanel {
 					contPajek++;
 					if(contMembers%refreshMembersPeriod == 0){//Every refresh member period
 						contMembers=0;
-						String elementSelected = (String)jListGroupMembers.getSelectedValue();
+						String elementSelected = jListGroupMembers.getSelectedValue();
 	
 						for(int i=0; i<groupChannel.getInetAddressesOfGroupMebers().size();i++){//adds the new members
 							addMemberToList(groupChannel.getInetAddressesOfGroupMebers().get(i).getHostAddress(),listModelMembers);
@@ -585,7 +616,7 @@ public class GroupPanel extends JPanel {
 				fileName = dir+dateStr+"_"+groupAddr+"_"+groupChannel.getLocalAddress().toString().split(":")[0]+".net";
 				//creates the file tht will be use to write in the information.
 				f = new BufferedWriter(new FileWriter(new File(fileName)));
-				initialTime = System.currentTimeMillis();
+				System.currentTimeMillis();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}

@@ -1,131 +1,157 @@
 package urv.log.gui;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.log4j.helpers.LogLog;
-import urv.log.TextPaneAppender;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.text.MessageFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
-import javax.swing.*;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
-import java.awt.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JCheckBox;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 
 
+public class SwingAppenderUI extends JPanel {
+	final String loggerName;
+	final JTextArea outputArea = new JTextArea(10, 10);
+	final Map<Level, Boolean> enabledLevels = new HashMap<>();
+	final JCheckBox finestBox = new JCheckBox("FINEST", false);
+	final JCheckBox finerBox = new JCheckBox("FINER", false);
+	final JCheckBox fineBox = new JCheckBox("FINE", false);
+	final JCheckBox infoBox = new JCheckBox("INFO", true);
+	final JCheckBox warningBox = new JCheckBox("WARNING", false);
+	final JCheckBox severeBox = new JCheckBox("SEVERE", false);
 
-/** Creates a UI to display log messages from a SwingAppender
- * @author pshah
- *
- */
-public class SwingAppenderUI extends javax.swing.JPanel {
+	final JCheckBox autoscroll = new JCheckBox("Auto-scroll", true);
+	private final SimpleDateFormat timeFormatter = new SimpleDateFormat("HH:mm:ss.SSS");
+	private final Handler LogPanelHandler = new Handler() {
 
-	private static final long serialVersionUID = 4632204272328194437L;
-	
-	// Variables declaration - do not modify                     
-    private javax.swing.JTabbedPane LogsTabs;
-    // End of variables declaration                   
-
-    /** Creates new form SwingAppenderUI */
-    public SwingAppenderUI() {
-        initComponents();
-    }
-    
-    public void addTab(Level level){
-    	this.addTab(level.toString(), level);
-    }
-    
-    public void addTab(String title, Level level){
-    	
-    	Logger log = Logger.getRootLogger();
-    
-    	JPanel PanelLog = new javax.swing.JPanel();
-    	JScrollPane ScrollLog = new javax.swing.JScrollPane();
-        JTextPane TextLog = new javax.swing.JTextPane();
-        
-        JPanel PanelControl = new JPanel();
-        JToggleButton FreezeButton = new JToggleButton("Freeze");
-        FreezeButton.setName(Integer.toString(level.toInt(),10));
-        JButton CleanButton = new JButton("Clean");
-        CleanButton.setName(Integer.toString(level.toInt(),10));
-        FreezeButton.addActionListener(new java.awt.event.ActionListener() {
-			public void actionPerformed(java.awt.event.ActionEvent e) {
-				Logger log = Logger.getRootLogger();
-				TextPaneAppender tpa = ((TextPaneAppender) log.getAppender("textPaneAppender"));
-				StringBuffer sb = tpa.getTextPaneOutStream().getTextBuffer(Integer.parseInt(((JToggleButton)e.getSource()).getName()));
-				synchronized(sb){
-					tpa.getTextPaneOutStream().setBufferFlushable(sb,(tpa.getTextPaneOutStream().isBufferFlushable(sb))?false:true);
-				}
-	        }		        	
-		});
-        CleanButton.addActionListener(new java.awt.event.ActionListener() {
-			public void actionPerformed(java.awt.event.ActionEvent e) {
-				Logger log = Logger.getRootLogger();
-				TextPaneAppender tpa = ((TextPaneAppender) log.getAppender("textPaneAppender"));
-				JTextPane jtp = tpa.getTextPaneOutStream().getTextPane(Integer.parseInt(((JButton)e.getSource()).getName()));
-				Document doc = jtp.getDocument();
-				synchronized(doc){
-					try {
-						doc.remove(0, doc.getLength());
-					} catch (BadLocationException e1) {
-						LogLog.warn(e1.getMessage());
+		@Override
+		public void publish(final LogRecord record) {
+			if (enabledLevels.get(record.getLevel()) != null && enabledLevels.get(record.getLevel()))
+				SwingUtilities.invokeLater(new Runnable() {
+					@Override
+					public void run() {
+						String logMessage = record.getMessage();
+						Object[] args = record.getParameters();
+						MessageFormat fmt = new MessageFormat(logMessage);
+						outputArea.append(timeFormatter.format(new Date(record.getMillis())) + "\t" + record.getLevel()
+								+ "\t" + fmt.format(args) + "\n");
+						if (autoscroll.isSelected())
+							outputArea.setCaretPosition(outputArea.getDocument().getLength() - 1);
 					}
-				}
-			}		        	
+				});
+		}
+
+		@Override
+		public void flush() {
+			// do nothing
+		}
+
+		@Override
+		public void close() throws SecurityException {
+			// do nothing
+		}
+	};
+
+	public SwingAppenderUI() {
+		this(Logger.GLOBAL_LOGGER_NAME);
+	}
+
+	public SwingAppenderUI(String loggerName) {
+		super(new BorderLayout());
+		this.loggerName = loggerName;
+		initGui();
+		initLogging();
+	}
+
+	private void initGui() {
+		JPanel controlsPanel = new JPanel();
+		controlsPanel.setLayout(new BoxLayout(controlsPanel, BoxLayout.X_AXIS));
+		controlsPanel.add(finestBox);
+		controlsPanel.add(finerBox);
+		controlsPanel.add(fineBox);
+		controlsPanel.add(infoBox);
+		controlsPanel.add(warningBox);
+		controlsPanel.add(severeBox);
+
+		controlsPanel.add(Box.createHorizontalGlue());
+		controlsPanel.add(autoscroll);
+
+		finestBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				enabledLevels.put(Level.FINEST, finestBox.isSelected());
+			}
 		});
-        
-        PanelControl.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT));
-        PanelControl.add(FreezeButton);
-        PanelControl.add(CleanButton);
-        
-        PanelLog.setLayout(new java.awt.BorderLayout());
-        ScrollLog.setViewportView(TextLog);
+		finerBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				enabledLevels.put(Level.FINER, finerBox.isSelected());
+			}
+		});
+		fineBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				enabledLevels.put(Level.FINE, fineBox.isSelected());
+			}
+		});
+		infoBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				enabledLevels.put(Level.INFO, infoBox.isSelected());
+			}
+		});
+		warningBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				enabledLevels.put(Level.WARNING, warningBox.isSelected());
+			}
+		});
+		severeBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				enabledLevels.put(Level.SEVERE, severeBox.isSelected());
+			}
+		});
 
-        PanelLog.add(ScrollLog, java.awt.BorderLayout.CENTER);
-        PanelLog.add(PanelControl, java.awt.BorderLayout.SOUTH);
-    	
-    	TextPaneAppender tpa = ((TextPaneAppender) log.getAppender("textPaneAppender"));
-    	
-    	tpa.getTextPaneOutStream().addTextPane(TextLog,level);
-    	LogsTabs.addTab("  " +title + "  ", PanelLog);
-    	log.log(level, "testing " + level.toString() + " severity messages loging");
-    }
-    
-    public void createTabsPerLevel(){
-		Level[] levels ={Level.ALL,
-		Level.FATAL,
-		Level.ERROR,
-		Level.WARN,
-		Level.INFO,
-		Level.DEBUG,
-		Level.TRACE};
-    	for (Level l : levels){
-    		this.addTab(l);
-    	}
-    }
 
+		add(new JScrollPane(outputArea), BorderLayout.CENTER);
+		add(controlsPanel, BorderLayout.SOUTH);
+		setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-    /** This method is called from within the constructor to
-     * initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is
-     * always regenerated by the Form Editor.
-     */
-    
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
-    private void initComponents() {
+		outputArea.setEditable(false);
+		outputArea.setMinimumSize(new Dimension(0, 100));
+		outputArea.setBackground(Color.LIGHT_GRAY);
+		outputArea.setForeground(Color.BLACK);
+		outputArea.setFont(new Font("monospaced", Font.PLAIN, 14));
+		outputArea.setText("");
+	}
 
-        
-        
-        LogsTabs = new javax.swing.JTabbedPane();
+	private void initLogging() {
+		enabledLevels.put(Level.FINEST, Boolean.FALSE);
+		enabledLevels.put(Level.FINER, Boolean.FALSE);
+		enabledLevels.put(Level.FINE, Boolean.FALSE);
+		enabledLevels.put(Level.INFO, Boolean.FALSE);
+		enabledLevels.put(Level.WARNING, Boolean.FALSE);
+		enabledLevels.put(Level.SEVERE, Boolean.FALSE);
 
-        
-
-        setName("Form"); // NOI18N
-        setLayout(new java.awt.BorderLayout());
-
-        LogsTabs.setTabLayoutPolicy(javax.swing.JTabbedPane.SCROLL_TAB_LAYOUT);
-        LogsTabs.setName("LogsTabs"); // NOI18N
-        
-        add(LogsTabs, java.awt.BorderLayout.CENTER);
-        this.setPreferredSize(new Dimension(100,100));
-    }// </editor-fold>
-
+		final Logger LOGGER = Logger.getLogger(loggerName);
+		LOGGER.addHandler(LogPanelHandler);
+	}
 }

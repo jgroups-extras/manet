@@ -1,23 +1,25 @@
 package urv.emulator;
 
-import org.jgroups.logging.Log;
-import org.jgroups.logging.LogFactory;
-import urv.conf.PropertiesLoader;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.MulticastSocket;
 import java.net.SocketException;
 import java.util.List;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.jgroups.logging.Log;
+import org.jgroups.logging.LogFactory;
+
+import urv.conf.PropertiesLoader;
+
 /**
  * @author Gerard Paris Aixala
  *
  */
-public class VirtualDatagramSocket {
+public class VirtualDatagramSocket extends MulticastSocket {
 	
 	//	CLASS FIELDS --
 	
@@ -31,7 +33,8 @@ public class VirtualDatagramSocket {
     
     //	CONSTRUCTORS --
     
-	public VirtualDatagramSocket(int port,InetAddress addr) throws SocketException{		
+	public VirtualDatagramSocket(int port, InetAddress addr) throws IOException {
+		super(null);
 		this.localPort = port;
 		this.localAddr = addr;		
 		if (receivingQueues.getQueue(addr)==null){
@@ -49,15 +52,18 @@ public class VirtualDatagramSocket {
 	 * Closes this virtual datagram socket.
 	 *
 	 */
-	public void close(){}	
+	@Override
+	public void close(){}
+	
 	/**
 	 * Receives a datagram packet from this socket.
 	 * @param p the DatagramPacket into which to place the incoming data.
 	 */
-	public void receive(DatagramPacket p) throws IOException{
+	@Override
+	public synchronized void receive(DatagramPacket p) throws IOException{
 		if (myReceivingQueue!=null){
 			// blocks until a packet is available
-			DatagramPacket packet = (DatagramPacket)myReceivingQueue.remove();
+			DatagramPacket packet = myReceivingQueue.remove();
 			// Copying the received packet to the referenced packet
 			p.setAddress(packet.getAddress());
 			p.setData(packet.getData(),packet.getOffset(),packet.getLength());
@@ -65,11 +71,13 @@ public class VirtualDatagramSocket {
 			p.setPort(packet.getPort());
 			p.setSocketAddress(packet.getSocketAddress());
 		}
-	}	
+	}
+	
 	/**
 	 * Sends a datagram packet from this socket.
 	 * @param p
 	 */
+	@Override
 	public void send(DatagramPacket p) throws IOException{
 		InetAddress addr = p.getAddress();		
 		simulateRandomPropagationDelay();
@@ -80,27 +88,31 @@ public class VirtualDatagramSocket {
 				sendUnicast(p,addr);		
 			}
 		}
-	}	
-	/**
-	 * Not implemented
-	 * @param 
-	 * @throws SocketException
-	 */
-	public void setReceiveBufferSize(int size) throws SocketException{}
+	}
 	
 	/**
 	 * Not implemented
 	 * @param 
 	 * @throws SocketException
 	 */
-	public void setSendBufferSize(int size) throws SocketException{}
+	@Override
+	public synchronized void setReceiveBufferSize(int size) throws SocketException{}
+	
+	/**
+	 * Not implemented
+	 * @param 
+	 * @throws SocketException
+	 */
+	@Override
+	public synchronized void setSendBufferSize(int size) throws SocketException{}
 	
 	/**
 	 * Not implemented
 	 * @param tc
 	 * @throws SocketException
 	 */
-	public void setTrafficClass(int tc) throws SocketException{}
+	@Override
+	public synchronized void setTrafficClass(int tc) throws SocketException{}
 	
 	//	ACCESS METHODS --
 	
@@ -108,42 +120,52 @@ public class VirtualDatagramSocket {
 	 * Gets the local address to which the socket is bound.
 	 * @return the local address to which the socket is bound
 	 */
+	@Override
 	public InetAddress getLocalAddress(){
 		return localAddr;
-	}	
+	}
+	
 	/**
 	 * Returns the port number on the local host to which this socket is bound. 
 	 * @return he port number on the local host to which this socket is bound.
 	 */	
+	@Override
 	public int getLocalPort(){
 		return localPort;
-	}	
-	public int getReceiveBufferSize() throws SocketException{
+	}
+	
+	@Override
+	public synchronized int getReceiveBufferSize() throws SocketException{
 		return 0;
 	}
-	public int getSendBufferSize() throws SocketException{
+	
+	@Override
+	public synchronized int getSendBufferSize() throws SocketException{
 		return 0;
-	}	
+	}
+	
 	public boolean isEnabled() {
 		return enabled;
 	}
 	
 	//	PRIVATE METHODS --
 	
-	private boolean isBroadcastAddress(InetAddress addr){
+	private static boolean isBroadcastAddress(InetAddress addr){
 		return addr.getAddress()[3] == (byte)255; 
-	}	
+	}
+	
 	private void sendBroadcast(DatagramPacket p){
 		// Obtain the list of receivers
 		List<InetAddress> neighbours = vni.getNeighbours(getLocalAddress());
 		for (InetAddress addr : neighbours){
 			if (addr!=null){ // Modified 31-04-2008
-				Queue queue = receivingQueues.getQueue(addr);
+				Queue<DatagramPacket> queue = receivingQueues.getQueue(addr);
 				sendToQueueProb(p,queue);
 			}			
 		}
-	}	
-	private void sendToQueue(DatagramPacket p,Queue q){
+	}
+	
+	private void sendToQueue(DatagramPacket p,Queue<DatagramPacket> q){
 		//IF the queue has not been created yet, since the other
 		//application is not created, discard paquet
 		if (q==null){
@@ -152,12 +174,13 @@ public class VirtualDatagramSocket {
 		}
 		q.add(p);
 	}
+	
 	/**
 	 * Sends a message to a queue with the probability specified in SENDING_PROB
 	 * @param p
 	 * @param queue
 	 */
-	private void sendToQueueProb(DatagramPacket p, Queue queue) {
+	private void sendToQueueProb(DatagramPacket p, Queue<DatagramPacket> queue) {
 		Random rand = new Random();
 		double randomDouble = rand.nextDouble();
 		if (randomDouble<PropertiesLoader.getSendingProb()){
@@ -165,10 +188,11 @@ public class VirtualDatagramSocket {
 		}		
 	}	
 	private void sendUnicast(DatagramPacket p, InetAddress dest){
-		Queue queue = receivingQueues.getQueue(dest);
+		Queue<DatagramPacket> queue = receivingQueues.getQueue(dest);
 		sendToQueue(p,queue);
 	}
-	private void simulateRandomPropagationDelay() {		
+	
+	private static void simulateRandomPropagationDelay() {		
 		//Thread sleep provides 1ms resolution
 		//will generate a delay between 10 and 20 ms
 		Random r = new Random(System.currentTimeMillis());		

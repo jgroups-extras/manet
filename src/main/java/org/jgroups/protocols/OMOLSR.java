@@ -58,6 +58,7 @@ public class OMOLSR extends Protocol {
 	 * may need to send a new response event back up the stack using
 	 * {@code passUp()}.
 	 */
+	@Override
 	public Object down(Message msg) {
         Address dest = msg.getDest();
         boolean multicast=dest == null;
@@ -77,17 +78,16 @@ public class OMOLSR extends Protocol {
             msg.putHeader(getId(),header);
             handleOutgoingDataMessage(msg);
             return null;
-        }else {
-            // Count message retransmission sent
-            NakAckHeader2 nakackHeader = msg.getHeader(Constants.NAKACK2_ID);
-            if (nakackHeader!=null) {
-                String headerStr = (nakackHeader).toString();
-                if (headerStr.contains("XMIT_RSP")) {
-                    // Obtain received retransmited messages
-                    //obtainRetransmissionListStatistics(headerStr);
-                }
-            }
         }
+		// Count message retransmission sent
+		NakAckHeader2 nakackHeader = msg.getHeader(Constants.NAKACK2_ID);
+		if (nakackHeader!=null) {
+		    String headerStr = (nakackHeader).toString();
+		    if (headerStr.contains("XMIT_RSP")) {
+		        // Obtain received retransmited messages
+		        //obtainRetransmissionListStatistics(headerStr);
+		    }
+		}
 
         return down_prot.down(msg);
     }
@@ -113,20 +113,25 @@ public class OMOLSR extends Protocol {
 
 	public void setUnicastHandlerListener(UnicastHandlerListener listener){
 		this.unicastHandlerListener = listener;	
-	}	
+	}
+	
 	/**
 	 * Starts the protocol, sets the port where broadcast messages are received 
 	 */
+	@Override
 	public void start() throws Exception{
 		super.start();
 		log.debug("OMOLSR: start!! mcast="+ mcast_addr +" local="+localAddress);
 	}
+	
 	/**
 	 * Stops the protocol, by unregistering itself from the OMcastHandler
 	 */
+	@Override
 	public void stop() {
 		//controller.unregisterOmcastProtocol(multicastAddress);
 	}
+	
 	/**
 	 * An event was received from the layer below. Usually the current layer will want to examine
 	 * the event type and - depending on its type - perform some computation
@@ -139,7 +144,8 @@ public class OMOLSR extends Protocol {
 	 *
 	 * @param evt - the event that has been sent from the layer below
 	 */
-    public Object up(Event evt) {
+    @Override
+	public Object up(Event evt) {
         switch (evt.getType()) {
             case Event.SET_LOCAL_ADDRESS:
                 log.debug("Received local address in OMOLSR");
@@ -164,7 +170,7 @@ public class OMOLSR extends Protocol {
                 if (objArg instanceof TopologyEvent){
                     TopologyEvent updateEvt = (TopologyEvent)objArg;
                     OMOLSRNetworkGraph omolsrNetworkGraph  = updateEvt.getOMOLSRNetworkGraph();
-                    localNode = (OLSRNode) updateEvt.getLocalNode().copy();
+                    localNode = updateEvt.getLocalNode().copy();
                     getController().updateMulticastNetworkGraph(omolsrNetworkGraph);
                     setRecomputeMstFlag(true);
                     return up_prot.up(new Event(Event.VIEW_CHANGE, updateEvt));
@@ -177,7 +183,8 @@ public class OMOLSR extends Protocol {
         }
     }
 
-    public Object up(Message msg) {
+    @Override
+	public Object up(Message msg) {
 
         // retrieve header and check if message contains data or control information
         // getHeader from protocol name
@@ -187,7 +194,7 @@ public class OMOLSR extends Protocol {
             return up_prot.up(msg);
 
         OMOLSRHeader hdr=(OMOLSRHeader)obj;
-        //Set back src and dst Addressess before getting the message copy
+        //Set back src and dst Addresses before getting the message copy
 
         //Set back the src address, since OLSR changes src address when
         //routing messages
@@ -232,17 +239,22 @@ public class OMOLSR extends Protocol {
     private void createController() {
         controller = new OMOLSRController(this,localNode);
 	}
+    
 	/**
 	 * @return Returns the controller.
 	 */
 	private OMOLSRController getController() {
 		//Wait for the event that creates the controller
-        while (controller==null);
+        while (controller==null) {
+        	 // FIXME busy wait
+        }
         return controller;
 	}
+	
 	private boolean handleIncomingDataMessage(Message msg){
 		return unicastHandlerListener.handleIncomingDataMessage(msg);
 	}
+	
 	/**
 	 * 
 	 * @param msg
@@ -250,6 +262,7 @@ public class OMOLSR extends Protocol {
 	private void handleOutgoingDataMessage(Message msg){
 		unicastHandlerListener.handleOutgoingDataMessage(msg);
 	}
+	
 	/**
 	 * Returns the value of the flag
 	 * @return
@@ -257,6 +270,7 @@ public class OMOLSR extends Protocol {
 	private boolean isRecomputeMstFlag() {
 		return recomputeMstFlag;
 	}
+	
 	/**
 	 * Launches bootstrapping process
 	 *

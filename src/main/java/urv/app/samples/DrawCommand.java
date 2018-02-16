@@ -2,11 +2,11 @@
 
 package urv.app.samples;
 
-import org.jgroups.util.Streamable;
-
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+
+import org.jgroups.util.Streamable;
 
 /**
  * Encapsulates information about a draw command.
@@ -40,7 +40,8 @@ public class DrawCommand implements Streamable {
     }
 
 
-    public void writeTo(DataOutput out) throws IOException {
+    @Override
+	public void writeTo(DataOutput out) throws IOException {
         out.writeByte(mode);
         out.writeInt(x);
         out.writeInt(y);
@@ -49,7 +50,8 @@ public class DrawCommand implements Streamable {
         out.writeInt(b);
     }
 
-    public void readFrom(DataInput in) throws IOException, IllegalAccessException, InstantiationException {
+    @Override
+	public void readFrom(DataInput in) throws IOException {
         mode=in.readByte();
         x=in.readInt();
         y=in.readInt();
@@ -59,7 +61,8 @@ public class DrawCommand implements Streamable {
     }
 
 
-    public String toString() {
+    @Override
+	public String toString() {
         StringBuffer ret=new StringBuffer();
         switch(mode) {
             case DRAW: ret.append("DRAW(" + x + ", " + y + ") [" + r + '|' + g + '|' + b + ']');
