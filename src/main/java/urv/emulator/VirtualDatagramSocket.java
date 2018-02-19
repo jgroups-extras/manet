@@ -3,15 +3,17 @@ package urv.emulator;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.SocketException;
 import java.util.List;
 import java.util.Queue;
 import java.util.Random;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.BlockingQueue;
 
 import org.jgroups.logging.Log;
 import org.jgroups.logging.LogFactory;
+import org.jgroups.util.ConcurrentLinkedBlockingQueue;
 
 import urv.conf.PropertiesLoader;
 
@@ -23,7 +25,7 @@ public class VirtualDatagramSocket extends MulticastSocket {
 	
 	//	CLASS FIELDS --
 	
-	private Queue<DatagramPacket> myReceivingQueue;
+	private BlockingQueue<DatagramPacket> myReceivingQueue;
 	private final ReceivingQueues receivingQueues = ReceivingQueues.getInstance();
 	private final VirtualNetworkInformation vni = VirtualNetworkInformation.getInstance();
 	private int localPort = 0;
@@ -40,7 +42,7 @@ public class VirtualDatagramSocket extends MulticastSocket {
 		if (receivingQueues.getQueue(addr)==null){
 			// Only a receivingQueue per host			
 			enabled = true;			
-			myReceivingQueue = new ConcurrentLinkedQueue<>();
+			myReceivingQueue = new ConcurrentLinkedBlockingQueue<>(500);
 			receivingQueues.registerQueue(addr, myReceivingQueue);			
 			log.info("VirtualDatagramSocket created. Delivery probability: "+PropertiesLoader.getSendingProb());
 		}		
@@ -53,7 +55,9 @@ public class VirtualDatagramSocket extends MulticastSocket {
 	 *
 	 */
 	@Override
-	public void close(){}
+	public void close(){
+		// do nothing
+	}
 	
 	/**
 	 * Receives a datagram packet from this socket.
@@ -63,7 +67,19 @@ public class VirtualDatagramSocket extends MulticastSocket {
 	public synchronized void receive(DatagramPacket p) throws IOException{
 		if (myReceivingQueue!=null){
 			// blocks until a packet is available
-			DatagramPacket packet = myReceivingQueue.remove();
+			DatagramPacket packet;
+			try {
+				packet = myReceivingQueue.take();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				// write dummy data into the DatagramPacket
+				p.setAddress(InetAddress.getLoopbackAddress());
+				p.setData(new byte[0]);
+				p.setLength(0);
+				p.setPort(0);
+				p.setSocketAddress(new InetSocketAddress(0));
+				return;
+			}
 			// Copying the received packet to the referenced packet
 			p.setAddress(packet.getAddress());
 			p.setData(packet.getData(),packet.getOffset(),packet.getLength());
@@ -96,7 +112,9 @@ public class VirtualDatagramSocket extends MulticastSocket {
 	 * @throws SocketException
 	 */
 	@Override
-	public synchronized void setReceiveBufferSize(int size) throws SocketException{}
+	public synchronized void setReceiveBufferSize(int size) throws SocketException{
+		// do nothing
+	}
 	
 	/**
 	 * Not implemented
@@ -104,7 +122,9 @@ public class VirtualDatagramSocket extends MulticastSocket {
 	 * @throws SocketException
 	 */
 	@Override
-	public synchronized void setSendBufferSize(int size) throws SocketException{}
+	public synchronized void setSendBufferSize(int size) throws SocketException{
+		// do nothing
+	}
 	
 	/**
 	 * Not implemented
@@ -112,7 +132,9 @@ public class VirtualDatagramSocket extends MulticastSocket {
 	 * @throws SocketException
 	 */
 	@Override
-	public synchronized void setTrafficClass(int tc) throws SocketException{}
+	public synchronized void setTrafficClass(int tc) throws SocketException{
+		// do nothing
+	}
 	
 	//	ACCESS METHODS --
 	
