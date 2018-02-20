@@ -1,21 +1,16 @@
 package urv.emulator;
 
+import org.jgroups.logging.Log;
+import org.jgroups.logging.LogFactory;
+import org.jgroups.util.ConcurrentLinkedBlockingQueue;
+import urv.conf.PropertiesLoader;
+
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.MulticastSocket;
-import java.net.SocketException;
+import java.net.*;
 import java.util.List;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
-
-import org.jgroups.logging.Log;
-import org.jgroups.logging.LogFactory;
-import org.jgroups.util.ConcurrentLinkedBlockingQueue;
-
-import urv.conf.PropertiesLoader;
 
 /**
  * @author Gerard Paris Aixala
@@ -43,8 +38,8 @@ public class VirtualDatagramSocket extends MulticastSocket {
 			// Only a receivingQueue per host			
 			enabled = true;			
 			myReceivingQueue = new ConcurrentLinkedBlockingQueue<>(500);
-			receivingQueues.registerQueue(addr, myReceivingQueue);			
-			log.info("VirtualDatagramSocket created. Delivery probability: "+PropertiesLoader.getSendingProb());
+			receivingQueues.registerQueue(addr, myReceivingQueue);
+			log.info("VirtualDatagramSocket created. Delivery probability: "+ PropertiesLoader.getSendingProb());
 		}		
 	}	
 	
