@@ -40,7 +40,7 @@ import java.util.function.Supplier;
  * <ol>
  * <li>Receivers now send credits to a sender when more than min_credits have been received (rather than when min_credits
  * are left)
- * <li>Receivers don't send the full credits (max_credits), but rather tha actual number of bytes received
+ * <li>Receivers don't send the full credits (max_credits), but rather the actual number of bytes received
  * <ol/>
  * @author Bela Ban
  * @version $Id: FC.java,v 1.86.2.1 2007/12/18 07:58:17 belaban Exp $
