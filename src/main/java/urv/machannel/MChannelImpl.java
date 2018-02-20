@@ -58,8 +58,8 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 		this.mcastAddr = mcastAddr;
     	if (PropertiesLoader.isEmulated()){
     		this.controller = controller;
-    		this.notifier = this.controller.getMessageNotifier();
-    		this.groupMembershipInformation = this.controller.getGroupMembershipNotifier();
+    		this.notifier = controller != null? this.controller.getMessageNotifier() : null;
+    		this.groupMembershipInformation = controller != null? this.controller.getGroupMembershipNotifier() : null;
 	    	groupMembershipInformation.newGroupJoined(
               mcastAddr.toInetAddress(), getInetAddress(channel.getAddress()), this);
 	    }
