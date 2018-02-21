@@ -3,30 +3,28 @@
 <config xmlns="urn:org:jgroups" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="urn:org:jgroups http://www.jgroups.org/schema/jgroups.xsd">
     <EMU_UDP
-            mcast_send_buf_size="640000"
+            mcast_send_buf_size="640K"
             discard_incompatible_packets="true"
             ucast_recv_buf_size="20M"
-            loopback="true"
             mcast_recv_buf_size="25M"
             max_bundle_size="64K"
-            max_bundle_timeout="30"
             ucast_send_buf_size="640K"
-            tos="16" ip_ttl="32"
+            tos="16"
+            ip_ttl="32"
             port_range="1000"
-            emu_node_id="${emu_node_id}"
-            emu_port="${emu_port}"
-    />
+            emu_node_id="${emu-node-id}"
+            emu_port="${emu-port}" />
 
+    <OLSR mcast_addr="225.222.222.222" />
+    <JOLSR_UNICAST/>
 
-    <OLSR />
-    <FC max_credits="150000"
-        lowest_max_credits="110000"
-        min_credits="60000"
-        min_threshold="0.25"/>
+    <OMOLSR mcast_addr="225.222.222.222" />
 
-    <FRAG2 frag_size="50000"/>
+    <FC max_credits="150000" lowest_max_credits="110000" min_credits="60000" min_threshold="0.25" />
 
-   <!-- <PING />
+    <FRAG2 frag_size="50000" />
+
+    <!-- <PING />
     <MERGE3 max_interval="30000"
             min_interval="10000"/>
     <FD_SOCK/>
