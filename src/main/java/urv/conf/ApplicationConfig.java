@@ -148,13 +148,14 @@ public class ApplicationConfig {
 	}
 	private static String getJOLSR_UDP(int port){
 		return "<" +
-		"JOLSR_UDP " +
+	//	"JOLSR_UDP " +
+		"UDP " +
 		"bind_port=\""+port+"\" "+
 		"tos=\"8\" " +
 		"port_range=\"1000\" " +
-		"ucast_recv_buf_size=\"64000000\" " +
-		"ucast_send_buf_size=\"64000000\" " +
-		"max_bundle_size=\"64000\" " +
+		"ucast_recv_buf_size=\"640K\" " +
+		"ucast_send_buf_size=\"640K\" " +
+		"max_bundle_size=\"64K\" " +
 		"ip_ttl=\"32\" " +
 		"enable_diagnostics=\"false\" " +
 		"thread_naming_pattern=\"cl\" " +		

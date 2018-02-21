@@ -193,8 +193,9 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 		msg.setDest(new IpAddress(dstInetAddress,PropertiesLoader.getUnicastPort()));
 		return msg;
 	}
-    private static InetAddress	getInetAddress(Address dest) {
-		return ((IpAddress)dest).getIpAddress();
+    private InetAddress getInetAddress(Address dest) {
+		PhysicalAddress phys_addr=(PhysicalAddress)channel.down(new Event(Event.GET_PHYSICAL_ADDRESS, dest));
+		return phys_addr instanceof IpAddress? ((IpAddress)phys_addr).getIpAddress() : null;
 	}
 	/**
 	 * Returns an InetAddress from the local Address
@@ -222,7 +223,7 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 			//In the emulation we will add a seq number to check that all messages
 			//get to their destinations
 			if (msg.getObject() instanceof SequenceNumberMessageWrapper){
-				SequenceNumberMessageWrapper messageWrapper = (SequenceNumberMessageWrapper)msg.getObject();
+				SequenceNumberMessageWrapper messageWrapper=msg.getObject();
 				int seq = messageWrapper.getSeqNumber();
 				Serializable content = messageWrapper.getContent();
 				msg.setObject(content);

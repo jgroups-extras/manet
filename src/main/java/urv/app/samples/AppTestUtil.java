@@ -3,9 +3,8 @@
  */
 package urv.app.samples;
 
+import javax.swing.*;
 import java.net.URL;
-
-import javax.swing.ImageIcon;
 
 /**
  * @author marcel
@@ -14,7 +13,7 @@ import javax.swing.ImageIcon;
 public class AppTestUtil {
 
 	public static ImageIcon getCloseIcon(){
-		URL url = AppTestUtil.class.getClassLoader().getResource("urv/resources/img/close.gif");
+		URL url = AppTestUtil.class.getClassLoader().getResource("close.gif");
 		return new ImageIcon(url);
 
 	}

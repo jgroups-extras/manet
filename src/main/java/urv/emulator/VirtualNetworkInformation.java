@@ -1,10 +1,5 @@
 package urv.emulator;
 
-import java.net.InetAddress;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-
 import urv.conf.PropertiesLoader;
 import urv.emulator.topology.graph.GraphChanges;
 import urv.emulator.topology.graph.GraphInformation;
@@ -14,6 +9,11 @@ import urv.emulator.topology.parser.Parser;
 import urv.util.graph.NetworkGraph;
 import urv.util.graph.Node;
 import urv.util.graph.Weight;
+
+import java.net.InetAddress;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 
 /**
  * This class offers information to perform the simulation.
@@ -27,12 +27,12 @@ public class VirtualNetworkInformation {
 	//	CLASS FIELDS --
 	
 	private final static VirtualNetworkInformation instance = new VirtualNetworkInformation();
-		private VirtualAddressGenerator addressGenerator;
-	private GraphInformation graphInformation;
+	private final VirtualAddressGenerator addressGenerator;
+	private final GraphInformation graphInformation;
 	//Network graph info is contained inside the graph information
 	private NetworkGraph<Node,Weight> networkGraph;
-	private GraphChanges graphChanges;	
-	private String graphFile;
+	private final GraphChanges graphChanges;
+	private final String graphFile;
 	
 	//	CONSTRUCTORS --
 	
@@ -96,7 +96,7 @@ public class VirtualNetworkInformation {
 		//Perform translation to nodes
 		Node node1 = addressGenerator.getNodeNumber(addr);
 		Set<Node> nodeList = networkGraph.getNeighbours(node1);
-		List<InetAddress> inetList = new LinkedList<InetAddress>();
+		List<InetAddress> inetList =new LinkedList<>();
 		for(Node n:nodeList){
 			inetList.add(addressGenerator.getInetAddress(n));
 		}		
@@ -139,8 +139,7 @@ public class VirtualNetworkInformation {
 	 */
 	private InetAddress createEmuNodeAddress(int nodeId){		
 		//Create a hostname and IpAddress
-		InetAddress addr = addressGenerator.createEmuInetAddress(nodeId);		
-		return addr;
+        return addressGenerator.createEmuInetAddress(nodeId);
 	}	
 	/**
 	 * Loads a parser depending on the type of file we are loading
