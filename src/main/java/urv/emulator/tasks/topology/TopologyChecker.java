@@ -5,6 +5,10 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 
+import org.jgroups.Address;
+import org.jgroups.stack.IpAddress;
+
+import urv.conf.PropertiesLoader;
 import urv.emulator.EmulationNeighborData;
 import urv.emulator.VirtualNetworkInformation;
 import urv.olsr.data.OLSRNode;
@@ -17,16 +21,18 @@ import urv.olsr.util.Util;
  */
 public class TopologyChecker {
 
+	public static final int UNICAST_PORT = PropertiesLoader.getUnicastPort();
+	
 	//	CLASS FIELDS --
 	
 	private VirtualNetworkInformation vni;
-	private Hashtable<InetAddress,OLSRNode> transTable;
+	private Hashtable<Address,OLSRNode> transTable;
 
 	//	CONSTRUCTORS --
 	
 	public TopologyChecker(VirtualNetworkInformation vni) {
 		this.vni = vni;
-		transTable = new Hashtable<InetAddress,OLSRNode>();		
+		transTable = new Hashtable<>();
 		for (int i=0;i<vni.getNetworkSize();i++){
 			OLSRNode node = new OLSRNode();
 			node.setValue(vni.getEmuNodeAddress(i+1));
@@ -43,7 +49,7 @@ public class TopologyChecker {
 	 * @param emuNodeAddress
 	 * @return
 	 */
-	public boolean checkOneHopNeighbors(InetAddress emuNodeAddress) {
+	public boolean checkOneHopNeighbors(Address emuNodeAddress) {
 		OLSRNode node = new OLSRNode();
 		//We just need the inetAddress to create an OLSRNOde and get the neighborTable
 		node.setValue(emuNodeAddress);
@@ -52,20 +58,20 @@ public class TopologyChecker {
 		if (neighborTable != null) {
 			OLSRSet realNeighbors = neighborTable.getCopyOfNeighbors();
 			// Get the list of neighbors in the graph
-			List<InetAddress> emulatedAddresses = vni.getNeighbours(emuNodeAddress);
+			List<Address> emulatedAddresses = vni.getNeighbours(emuNodeAddress);
 			// Get the "real list" from the neighbor table, and change it to
-			// InetAddresses
-			List<InetAddress> realAddresses = Util.getAddressList(realNeighbors);
+			// Addresses
+			List<Address> realAddresses = Util.getAddressList(realNeighbors);
 			// We should have the same number of neighbors
 			//And all nodes shoud be connected
 			if (emulatedAddresses.size() != realAddresses.size() && emulatedAddresses.size()!=0) return false;
 			// For each address in the graph, verify it exists in the
 			// realNeighbors
 			// that is, in the neighbor table
-			for (InetAddress emulatedAddr : emulatedAddresses) {
-				Iterator<InetAddress> it = realAddresses.iterator();
+			for (Address emulatedAddr : emulatedAddresses) {
+				Iterator<Address> it = realAddresses.iterator();
 				while (it.hasNext()) {
-					InetAddress realAddress = it.next();
+					Address realAddress = it.next();
 					if (realAddress.equals(emulatedAddr)) {
 						// Empty the real Addressess list
 						it.remove();
@@ -76,11 +82,11 @@ public class TopologyChecker {
 			// If the set is empty, we have looked all the neighbors on the real
 			// addressess
 			return realAddresses.isEmpty();
-		} else {
-			return false;
 		}
+		return false;
 	}
-	public boolean checkTwoHopNeighbors(InetAddress emuNodeAddress) {
+	
+	public boolean checkTwoHopNeighbors(Address emuNodeAddress) {
 		OLSRNode node = new OLSRNode();
 		//We just need the inetAddress to create an OLSRNOde and get the neighborTable
 		node.setValue(emuNodeAddress);
@@ -88,22 +94,22 @@ public class TopologyChecker {
 		///Check whether the information is available (applications are launched after the tasks)
 		if (neighborTable != null) {
 			// Get the list of neighbors in the graph
-			List<InetAddress> emulatedAddresses = vni.getNeighbours(emuNodeAddress);
+			List<Address> emulatedAddresses = vni.getNeighbours(emuNodeAddress);
 			// For each emulated neighbour, get the address of emulated
 			// neighbors
-			for (InetAddress emulatedAddr : emulatedAddresses) {
+			for (Address emulatedAddr : emulatedAddresses) {
 				// List of NoNs for this node
 				// real NoNs
 				OLSRSet nons = (OLSRSet) neighborTable.getEntry(
 						transTable.get(emulatedAddr)).getNeighborsOfNeighbors().clone();
 				// Emulated (from the graph) NoNs
-				List<InetAddress> emulatedNeighbors = vni.getNeighbours(emulatedAddr);
+				List<Address> emulatedNeighbors = vni.getNeighbours(emulatedAddr);
 				// Remove local node from the NoN (a node is not NoN of himself
 				emulatedNeighbors.remove(emuNodeAddress);
 				// The amount of NoNs should be the sime, otherwise return false
 				if (nons.size() != emulatedNeighbors.size()) return false;
 
-				for (InetAddress neighbor : emulatedNeighbors) {
+				for (Address neighbor : emulatedNeighbors) {
 					OLSRNode translatedNode = transTable.get(neighbor);
 					if (nons.contains(translatedNode))
 						nons.remove(translatedNode);
@@ -111,8 +117,12 @@ public class TopologyChecker {
 				if (!nons.isEmpty()) return false;
 			}
 			return true;
-		} else {
-			return false;
 		}
+		return false;
+	}
+	
+	static Address getAddress(InetAddress inetAddress) {
+		IpAddress ipAddress = new IpAddress(inetAddress, UNICAST_PORT);
+		return ipAddress;
 	}
 }

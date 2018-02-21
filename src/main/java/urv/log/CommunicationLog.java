@@ -4,8 +4,8 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.InetAddress;
 
+import org.jgroups.Address;
 import org.jgroups.Message;
 import org.jgroups.View;
 
@@ -26,7 +26,6 @@ public class CommunicationLog implements EmulationMessageListener{
 	//	CONSTRUCTORS --
 	
 	public CommunicationLog(){
-		super();
 		try {
 			String dateStr=DateUtils.getTimeFormatString();
 			String dir = "runResults" + File.separator;
@@ -44,13 +43,14 @@ public class CommunicationLog implements EmulationMessageListener{
 
 	//	OVERRIDDEN METHODS --
 	
-	public void onMessageReceived(Message msg, InetAddress src, InetAddress mainDst, InetAddress realDst, int seqNumber) {
+	@Override
+	public void onMessageReceived(Message msg, Address src, Address mainDst, Address realDst, int seqNumber) {
 		StringBuffer out = new StringBuffer();
 		out.append(getElapsedMsecs()+" ");
 		out.append("RCVD ");
-		out.append(src.getHostAddress()+" > ");
-		out.append(mainDst.getHostAddress()+ " ");
-		out.append("at " + realDst.getHostAddress()+ " ");
+		out.append(src + " > ");
+		out.append(mainDst + " ");
+		out.append("at " + realDst + " ");
 		out.append("#"+seqNumber);
 		out.append("\n");
 		try {
@@ -61,12 +61,14 @@ public class CommunicationLog implements EmulationMessageListener{
 			e.printStackTrace();
 		}
 	}
-	public void onMessageSent(Message msg, InetAddress src, InetAddress dst, int seqNumber, View view) {
+	
+	@Override
+	public void onMessageSent(Message msg, Address src, Address dst, int seqNumber, View view) {
 		StringBuffer out = new StringBuffer();
 		out.append(getElapsedMsecs()+" ");
 		out.append("SENT ");
-		out.append(src.getHostAddress()+" > ");
-		out.append(dst.getHostAddress()+ " ");
+		out.append(src.toString() + " > ");
+		out.append(dst.toString() + " ");
 		out.append("#"+seqNumber);
 		out.append("\n");
 		try {

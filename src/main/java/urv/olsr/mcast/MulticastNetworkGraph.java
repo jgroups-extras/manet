@@ -32,10 +32,10 @@ public class MulticastNetworkGraph implements Loggable, BandwidthUpdatable{
 	 *
 	 */
 	public MulticastNetworkGraph(){
-		graph = new NetworkGraph<OLSRNode,Weight>();
+		graph = new NetworkGraph<>();
 	}	
 	public MulticastNetworkGraph(MulticastGroupsTable multicastGroupsTable,OLSRNode localNode){
-		graph = new NetworkGraph<OLSRNode,Weight>();
+		graph = new NetworkGraph<>();
 		this.multicastGroupsTable = multicastGroupsTable;
 		this.localNode = localNode;
 	}
@@ -61,7 +61,7 @@ public class MulticastNetworkGraph implements Loggable, BandwidthUpdatable{
 		MulticastNetworkGraph newGraph = new MulticastNetworkGraph();				
 		newGraph.graph = (NetworkGraph<OLSRNode,Weight>)this.graph.clone();
 		newGraph.multicastGroupsTable = (MulticastGroupsTable)this.multicastGroupsTable.clone();
-		newGraph.localNode = (OLSRNode)this.localNode.copy();
+		newGraph.localNode = this.localNode.copy();
 		return newGraph;
 	}	
 	
@@ -97,26 +97,24 @@ public class MulticastNetworkGraph implements Loggable, BandwidthUpdatable{
 		//CHANGED 08-04-21: add local node in case there is only 1 host running
 		newGraph.addNode(localNode);		
 		Set<OLSRNode> groupNodes = getGroupMembers(mcastAddr);		
-		Set<OLSRNode> nodes = new HashSet<OLSRNode>();
-		for (Edge e:this.graph.getEdges()){
+		Set<OLSRNode> nodes = new HashSet<>();
+		for (Edge<OLSRNode> e:this.graph.getEdges()){
 			if (!nodes.contains(e.getSource())){
-				nodes.add((OLSRNode)e.getSource());
+				nodes.add(e.getSource());
 			}
 			if (!nodes.contains(e.getTarget())){
-				nodes.add((OLSRNode)e.getTarget());
+				nodes.add(e.getTarget());
 			}
 		}		
 		for(OLSRNode node : nodes){
 		// 1. For each node that does not belong to the group...
 			if (!groupNodes.contains(node)){			
 				// 2. Obtain edges where this node is the src or the target
-				LinkedList<Edge> nodeEdges = (LinkedList<Edge>)newGraph.getEdges(node);			
+				LinkedList<Edge<OLSRNode>> nodeEdges = newGraph.getEdges(node);			
 				// 3. Obtain the neighbors of this node
 				Set<OLSRNode> neighs = newGraph.getLinkedNodes(node);
 				if (neighs==null){
 					continue;
-				} else { 
-					//Do nothing() 					
 				}
 				// 4. Double loop for the neighbors
 				for(OLSRNode ni: neighs){
@@ -127,8 +125,8 @@ public class MulticastNetworkGraph implements Loggable, BandwidthUpdatable{
 							// an edge with less than or equal weight already exists
 							
 							// 6.1 Obtain an edge that links ni to node, and nj to node
-							Edge niEdge = newGraph.getEdgeBetween(ni,node);
-							Edge njEdge = newGraph.getEdgeBetween(nj,node);							
+							Edge<OLSRNode> niEdge = newGraph.getEdgeBetween(ni,node);
+							Edge<OLSRNode> njEdge = newGraph.getEdgeBetween(nj,node);							
 							if (!niEdge.getWeight().isSet()){
 								niEdge.getWeight().setValue(new Float(1.0f));
 							}
@@ -138,7 +136,7 @@ public class MulticastNetworkGraph implements Loggable, BandwidthUpdatable{
 							// 6.2 Obtain the weight 
 							Weight newWeight = Weight.add(niEdge.getWeight(), njEdge.getWeight());							
 							// 6.3 Check the existance of an edge between both nodes
-							Edge existingEdge = newGraph.getEdgeBetween(ni,nj);							
+							Edge<OLSRNode> existingEdge = newGraph.getEdgeBetween(ni,nj);							
 							if (existingEdge==null){
 								newGraph.addEdge(ni, nj, newWeight);
 							} else if (newWeight.compareTo(existingEdge.getWeight())<0){

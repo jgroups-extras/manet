@@ -1,7 +1,6 @@
 package urv.emulator.tasks;
 
-import java.net.InetAddress;
-
+import org.jgroups.Address;
 import org.jgroups.Message;
 import org.jgroups.View;
 
@@ -13,8 +12,8 @@ import org.jgroups.View;
  */
 public interface EmulationMessageListener {
 
-	public void onMessageReceived(Message msg, InetAddress src, InetAddress mainDst, InetAddress realDst, int seqNumber);
+	public void onMessageReceived(Message msg, Address src, Address mainDst, Address realDst, int seqNumber);
 	
-	public void onMessageSent(Message msg, InetAddress src, InetAddress dst, int seqNumber,View view);
+	public void onMessageSent(Message msg, Address src, Address dst, int seqNumber,View view);
 	
 }

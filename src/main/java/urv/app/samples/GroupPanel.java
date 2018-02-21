@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -14,7 +13,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.List;
 
 import javax.swing.DefaultListModel;
@@ -31,6 +29,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
+import org.jgroups.Address;
 import org.jgroups.Message;
 import org.jgroups.Receiver;
 import org.jgroups.ReceiverAdapter;
@@ -115,7 +114,7 @@ public class GroupPanel extends JPanel {
 	/*
 	 * Method that adds a new member to the list only if it's not already in the list
 	 */
-	private void addMemberToList(String inetAddr,DefaultListModel<String> list){
+	void addMemberToList(String inetAddr,DefaultListModel<String> list){
 		synchronized(lock){
 			int size = list.getSize();
 			for (int i=0;i<size;i++){
@@ -141,136 +140,6 @@ public class GroupPanel extends JPanel {
 		}
 		return -1;
 	}	
-	/**
-	 * This method initializes GraphPanel
-	 *
-	 * @return javax.swing.JTabbedPane
-	 */
-	private GraphPanel getGraphPanel() {
-		if (netGraphPanel == null) {
-			netGraphPanel = new GraphPanel(groupChannel);
-			netGraphPanel.setBounds(new Rectangle(579, 25, 400, 574));
-		}
-		return netGraphPanel;
-	}
-	/**
-	 * This method initializes jButtonCloseGroupPanel
-	 *
-	 * @return javax.swing.JButton
-	 */
-	private JButton getJButtonCloseGroupPanel() {
-		if (jButtonCloseGroupPanel == null) {
-			jButtonCloseGroupPanel = new JButton();
-			jButtonCloseGroupPanel.setBounds(new Rectangle(964, 5, 14, 14));
-			jButtonCloseGroupPanel.setIcon(AppTestUtil.getCloseIcon());
-			jButtonCloseGroupPanel.addActionListener(new java.awt.event.ActionListener() {
-				//Before closing the tab, show a dialog
-				@Override
-				public void actionPerformed(java.awt.event.ActionEvent e) {
-					Object[] options = {"Yes","No"};
-					int n = JOptionPane.showOptionDialog(
-						    me,
-						    "Are you sure you want to leave the group?",
-						    "Group",
-						    JOptionPane.YES_NO_OPTION,
-						    JOptionPane.QUESTION_MESSAGE,
-						    null,     //do not use a custom Icon
-						    options,  //the titles of buttons
-						    options[0]);
-					if(n==0){
-						closeGroupPanel();
-					}
-				}
-			});
-		}
-		return jButtonCloseGroupPanel;
-	}
-
-	/**
-	 * This method initializes jButtonStartChat
-	 *
-	 * @return javax.swing.JButton
-	 */
-	private JButton getJButtonStartChat() {
-		if (jButtonStartChat == null) {
-			jButtonStartChat = new JButton();
-			jButtonStartChat.setBounds(new Rectangle(35, 560, 72, 23));
-			jButtonStartChat.setText("Chat");
-			jButtonStartChat.addActionListener(new java.awt.event.ActionListener() {
-				@Override
-				public void actionPerformed(java.awt.event.ActionEvent e) {
-					
-					startNewChat();
-					
-				}
-			});
-		}
-		return jButtonStartChat;
-	}
-	/**
-	 * This method initializes jListGroupMembers
-	 *
-	 * @return javax.swing.JList
-	 */
-	private JList<String> getJListGroupMembers() {
-		if (jListGroupMembers == null) {
-			jListGroupMembers = new JList<>(getListModelMembers());
-			jListGroupMembers.setBounds(new Rectangle(16, 14, 120, 500));
-			jListGroupMembers.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-			
-			jListGroupMembers.addMouseListener(new MouseAdapter() {
-				@Override
-				public void mouseClicked(MouseEvent e) {
-					if(e.getClickCount()==2){//When a double-click is done on a list element, a chat tab is opened
-						startNewChat();
-					}
-				}
-			});
-		}
-
-		return jListGroupMembers;
-	}
-
-	/**
-	 * This method initializes jTabbedPaneChats
-	 *
-	 * @return javax.swing.JTabbedPane
-	 */
-	private JTabbedPane getJTabbedPaneChats() {
-		if (jTabbedPaneChats == null) {
-			jTabbedPaneChats = new JTabbedPane();
-			jTabbedPaneChats.setBounds(new Rectangle(143, 15, 400, 200));
-			jTabbedPaneChats.addChangeListener(new ChangeListener() {
-				@Override
-				public void stateChanged(ChangeEvent e) {//When the selected tab changes
-					if(jTabbedPaneChats.getTabCount()>0 && jTabbedPaneChats.getSelectedIndex()>=0){
-						if(jTabbedPaneChats.getForegroundAt(jTabbedPaneChats.getSelectedIndex()).equals(Color.blue)){//If the new selection has a blue name, it's because it has a new message 
-							jTabbedPaneChats.setForegroundAt(jTabbedPaneChats.getSelectedIndex(),Color.black);
-							newMessages--;
-							if(newMessages==0){//If there aren't more new messages
-								jLabelNewMsg.setText("");//The warning of a new message is deleted
-							}
-						}						
-					}
-				}
-			});
-			jTabbedPaneChats.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
-			
-		}
-		return jTabbedPaneChats;
-	}
-	/**
-	 * This method initializes jTextFieldIpUnicast	
-	 * 	
-	 * @return javax.swing.JTextField	
-	 */
-	private JTextField getJTextFieldIpUnicast() {
-		if (jTextFieldIpUnicast == null) {
-			jTextFieldIpUnicast = new JTextField();
-			jTextFieldIpUnicast.setBounds(new Rectangle(16, 530, 120, 23));
-		}
-		return jTextFieldIpUnicast;
-	}
 	/**
 	 * This method initializes listModelMembers
 	 *
@@ -402,29 +271,11 @@ public class GroupPanel extends JPanel {
 			}
 		});
 	}
-	/*
-	 * Method that helps to know if the addr is a correct ip
-	 */
-	private static boolean isCorrectIp(String addr){
-		// if addr is empty or there's an exception, it's not a correct ip
-		try {
-			if(addr.length()==0) return false; 
-			InetAddress.getByName(addr);
-			return true;
-		} catch (UnknownHostException e) {
-			return false;
-		}
-	}
-
 	/**
 	 * Method that register the receptions of the messages that belong to that group
 	 */
 	private void registerMChannel(){
 		Receiver messageListener = new ReceiverAdapter() {
-			public byte[] getState() {
-				return null;
-			}
-			
 			/*
 			 * Action that is taken when one message is received
 			 * @see org.jgroups.MessageListener#receive(org.jgroups.Message)
@@ -491,8 +342,6 @@ public class GroupPanel extends JPanel {
 					System.err.println("Error: I received an"+obj);
 				}
 			}			
-			public void setState(byte[] state) {
-			}
 			/**
 			 * Given a string representation of an IP address, returns a short representation of the address
 			 * @param ip
@@ -521,14 +370,14 @@ public class GroupPanel extends JPanel {
 	 * Method that removes the elements from the listModelMembers that don't appear in the vInetAddr
 	 * Remove the exceeded elements
 	 */
-	private static void removeOldMembersFromList(List<InetAddress> vInetAddr, DefaultListModel<String> list){
+	static void removeOldMembersFromList(List<Address> vInetAddr, DefaultListModel<String> list){
 		boolean remove = true;
 
 		for(int i=0; i<list.size();i++){
 			remove=true;
 			for(int j=0; j<vInetAddr.size(); j++){
-				//System.out.println((String)list.getElementAt(i)+" = "+vInetAddr.get(j).getHostAddress());
-				if(list.getElementAt(i).equals(vInetAddr.get(j).getHostAddress())){
+				System.out.println(list.getElementAt(i)+" = "+vInetAddr.get(j).toString());
+				if(list.getElementAt(i).equals(vInetAddr.get(j).toString())){
 					remove = false;
 					break;
 				}
@@ -577,11 +426,11 @@ public class GroupPanel extends JPanel {
 						contMembers=0;
 						String elementSelected = jListGroupMembers.getSelectedValue();
 	
-						for(int i=0; i<groupChannel.getInetAddressesOfGroupMebers().size();i++){//adds the new members
-							addMemberToList(groupChannel.getInetAddressesOfGroupMebers().get(i).getHostAddress(),listModelMembers);
+						for(int i=0; i<groupChannel.getAddressesOfGroupMebers().size();i++){//adds the new members
+							addMemberToList(groupChannel.getAddressesOfGroupMebers().get(i).toString(),listModelMembers);
 						}						
 						//remove the old members
-						removeOldMembersFromList(groupChannel.getInetAddressesOfGroupMebers(), listModelMembers);	
+						removeOldMembersFromList(groupChannel.getAddressesOfGroupMebers(), listModelMembers);	
 						jListGroupMembers.setSelectedValue(elementSelected, true);
 					}
 					if(contPajek%refreshPajekFilePeriod==0){//Every file period

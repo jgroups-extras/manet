@@ -1,10 +1,10 @@
 package urv.emulator.tasks.stats;
 
-import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
 
+import org.jgroups.Address;
 import org.jgroups.Message;
 import org.jgroups.View;
 
@@ -15,6 +15,7 @@ import urv.emulator.tasks.EmulatorTask;
 import urv.emulator.tasks.GroupMembershipNotifier;
 import urv.emulator.tasks.MessageNotifier;
 import urv.machannel.MChannel;
+import urv.olsr.mcast.MulticastAddress;
 import urv.util.graph.HashMapSet;
 
 /**
@@ -29,11 +30,11 @@ public class CommunicationStatsTask extends EmulatorTask implements EmulationMes
 
 	//	CLASS FIELDS --
 	
-	public Hashtable<MessageIdentifier,View> sentMessages = new Hashtable <MessageIdentifier,View>();
-	public HashSet<MessageIdentifier> receivedMessages = new HashSet<MessageIdentifier>(); 
-	private HashMapSet<InetAddress,InetAddress> registeredMembership = new HashMapSet<InetAddress,InetAddress>();
+	public Hashtable<MessageIdentifier,View> sentMessages = new Hashtable <>();
+	public HashSet<MessageIdentifier> receivedMessages = new HashSet<>(); 
+	private HashMapSet<Address,Address> registeredMembership = new HashMapSet<>();
 	private Object lock = new Object();
-	private HashSet<MessageIdentifier> removeIfMcastReceived = new HashSet<MessageIdentifier>();
+	private HashSet<MessageIdentifier> removeIfMcastReceived = new HashSet<>();
 	//Stats info
 	private int ucastReceived=0;
 	private int ucastNotReceived=0;
@@ -61,6 +62,7 @@ public class CommunicationStatsTask extends EmulatorTask implements EmulationMes
 	/**
 	 * Add the code that should be launched in the run method
 	 */
+	@Override
 	public void doSomething() {		
 		//In first place, register the class as listener in order to intercept
 		//network messages
@@ -83,13 +85,17 @@ public class CommunicationStatsTask extends EmulatorTask implements EmulationMes
 			checkMessages();
 		}
 	}
-	public void onGroupCreated(InetAddress multicastAddress, InetAddress localAddress, MChannel mChannel) {
+	
+	@Override
+	public void onGroupCreated(Address multicastAddress, Address localAddress, MChannel mChannel) {
 		synchronized (lock) {
 			//Store info
 			registeredMembership.addToSet(multicastAddress,localAddress);
 		}		
 	}
-	public void onMessageReceived(Message msg, InetAddress src, InetAddress mainDst, InetAddress realDst, int seqNumber){
+	
+	@Override
+	public void onMessageReceived(Message msg, Address src, Address mainDst, Address realDst, int seqNumber){
 		//Maybe this lock could be removed since we are just retrieving information with
 		synchronized (lock) {
 			MessageIdentifier mid = new MessageIdentifier(src,mainDst,realDst,seqNumber);
@@ -97,7 +103,9 @@ public class CommunicationStatsTask extends EmulatorTask implements EmulationMes
 			receivedMessages.add(mid);
 		}		
 	}
-	public void onMessageSent(Message msg, InetAddress src, InetAddress dst, int seqNumber, View view) {		
+	
+	@Override
+	public void onMessageSent(Message msg, Address src, Address dst, int seqNumber, View view) {		
 		synchronized (lock) {
 			sentMessages.put(new MessageIdentifier(src,dst,dst,seqNumber),view);
 			numSentMessages++;
@@ -119,13 +127,13 @@ public class CommunicationStatsTask extends EmulatorTask implements EmulationMes
 			while (it.hasNext()){
 				MessageIdentifier mid = it.next();
 				//MULTICAST messages
-				InetAddress mainDst = mid.getMainDst();
-				if (mainDst.isMulticastAddress()){					
+				Address mainDst = mid.getMainDst();
+				if (mainDst == null || mainDst instanceof MulticastAddress){					
 					//View is not used now!
 					View view = sentMessages.get(mid);					
 					//For each node that the multicast was sent to
 					//Check if they really received the multicast message
-					InetAddress src = mid.getSrc();
+					Address src = mid.getSrc();
 					//InetAddress realDst = mid.getRealDst();
 					int seqNum = mid.getSeqNumber();					
 					boolean hasReceivedMulticast=true;
@@ -135,7 +143,7 @@ public class CommunicationStatsTask extends EmulatorTask implements EmulationMes
 					//Clear the tmp list of message to delete
 					removeIfMcastReceived.clear();
 					
-					for(InetAddress dstInView:registeredMembership.getSet(mainDst)){
+					for(Address dstInView:registeredMembership.getSet(mainDst)){
 						MessageIdentifier dstMid = new MessageIdentifier(src,mainDst,dstInView,seqNum);
 						if (!receivedMessages.contains(dstMid)){
 							hasReceivedMulticast=false;
@@ -218,36 +226,41 @@ public class CommunicationStatsTask extends EmulatorTask implements EmulationMes
 		
 		//	CLASS FIELDS --
 		
-		private InetAddress src;
-		private InetAddress mainDst;
+		private Address src;
+		private Address mainDst;
 		private int seqNumber;
-		private InetAddress realDst;
+		private Address realDst;
 		private boolean processed=false;
 		
 		//	CONSTRUCTORS --
 		
 		/**
-		 * @param src
-		 * @param mainDst
-		 * @param realDst 
+		 * @param src2
+		 * @param mainDst2
+		 * @param realDst2 
 		 * @param seqNumber
 		 */
-		public MessageIdentifier(InetAddress src, InetAddress mainDst, InetAddress realDst, int seqNumber) {			
-			this.src = src;
-			this.mainDst = mainDst;
-			this.realDst = realDst;
+		public MessageIdentifier(Address src2, Address mainDst2, Address realDst2, int seqNumber) {			
+			this.src = src2;
+			this.mainDst = mainDst2;
+			this.realDst = realDst2;
 			this.seqNumber = seqNumber;
 		}
 
 		//	OVERRIDDEN METHODS --
 		
+		@Override
 		public boolean equals(Object obj){
 			MessageIdentifier mid = (MessageIdentifier)obj;
 			return mid.getMainDst().equals(this.mainDst) && mid.getSrc().equals(this.src) && mid.getRealDst().equals(this.realDst)&& mid.getSeqNumber()==this.seqNumber;
 		}
+		
+		@Override
 		public int hashCode(){
 			return src.hashCode()+mainDst.hashCode()+realDst.hashCode()+seqNumber;
 		}
+		
+		@Override
 		public String toString(){
 			return "src:"+src+";mainDst:"+mainDst+";realDst:"+realDst+";seqNo:"+seqNumber;			
 		}
@@ -257,33 +270,38 @@ public class CommunicationStatsTask extends EmulatorTask implements EmulationMes
 		/**
 		 * @return Returns the mainDst.
 		 */
-		public InetAddress getMainDst() {
+		public Address getMainDst() {
 			return mainDst;
 		}
+		
 		/**
 		 * @return Returns the realDst.
 		 */
-		public InetAddress getRealDst() {
+		public Address getRealDst() {
 			return realDst;
-		}		
+		}
+		
 		/**
 		 * @return Returns the seqNumber.
 		 */
 		public int getSeqNumber() {
 			return seqNumber;
-		}		
+		}
+		
 		/**
 		 * @return Returns the src.
 		 */
-		public InetAddress getSrc() {
+		public Address getSrc() {
 			return src;
 		}
+		
 		/**
 		 * @return Returns the processed.
 		 */
 		public boolean isProcessed() {
 			return processed;
 		}
+		
 		/**
 		 * @param processed The processed to set.
 		 */

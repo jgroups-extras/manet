@@ -1,6 +1,6 @@
 package urv.emulator.tasks.topology;
 
-import java.net.InetAddress;
+import org.jgroups.Address;
 
 import urv.emulator.VirtualNetworkInformation;
 import urv.emulator.core.EmulationController;
@@ -27,6 +27,7 @@ public class TopologyChangesTask extends EmulatorTask {
 	/**
 	 * Add the code that should be launched in the run method
 	 */
+	@Override
 	public void doSomething() {
 		EmulationController controller = super.getEmulationController();
 		VirtualNetworkInformation vni = controller.getVirtualNetworkInformation();
@@ -51,7 +52,7 @@ public class TopologyChangesTask extends EmulatorTask {
 			int totalNodesOk = 0;
 			// For each node, check 1-hop neighbors and 2-hop neighbors
 			for (int i = 0; i < networkSize; i++) {
-				InetAddress addr = vni.getEmuNodeAddress(i + 1);
+				Address addr = vni.getEmuNodeAddress(i + 1);
 				oneHopOk = checker.checkOneHopNeighbors(addr);
 				if (oneHopOk) {
 					twoHopOk = checker.checkTwoHopNeighbors(addr);

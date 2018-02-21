@@ -1,14 +1,14 @@
 package urv.emulator.tasks;
 
-import urv.machannel.MChannel;
+import org.jgroups.Address;
 
-import java.net.InetAddress;
+import urv.machannel.MChannel;
 
 /**
  * @author Marcel Arrufat Arias
  */
 public interface EmulationGroupMembershipListener {
 	
-	void onGroupCreated(InetAddress multicastAddress, InetAddress localAddress, MChannel mChannel);
+	void onGroupCreated(Address multicastAddress, Address localAddress, MChannel mChannel);
 
 }

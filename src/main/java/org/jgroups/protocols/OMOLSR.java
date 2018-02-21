@@ -151,7 +151,7 @@ public class OMOLSR extends Protocol {
                 log.debug("Received local address in OMOLSR");
                 localAddress =evt.getArg();
                 localNode = new OLSRNode();
-                localNode.setValue(((IpAddress)localAddress).getIpAddress());
+                localNode.setValue(localAddress);
                 System.err.println("Received local node in OMOLSR:"+localNode);
 
                 // Setting local address for this group
@@ -199,7 +199,7 @@ public class OMOLSR extends Protocol {
         //Set back the src address, since OLSR changes src address when
         //routing messages
         Address srcAddr = hdr.getSrcAddress();
-        System.err.println("["+localNode.getAddress().getHostAddress()+"] Message src was "+msg.getSrc()+ " and now changing src to "+srcAddr);
+        System.err.println("["+localNode.getAddress()+"] Message src was "+msg.getSrc()+ " and now changing src to "+srcAddr);
         msg.setSrc(srcAddr);
         //Set destination multicast address
         msg.setDest(mcastAddr);

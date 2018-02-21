@@ -49,6 +49,7 @@ public abstract class EmulatorTask extends Thread  {
 
 	//	OVERRIDDEN METHODS --
 	
+	@Override
 	public void run(){
 		doSomething();
 	}

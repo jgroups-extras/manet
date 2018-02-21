@@ -11,8 +11,10 @@ import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 
+import org.jgroups.Address;
 import org.jgroups.logging.Log;
 import org.jgroups.logging.LogFactory;
+import org.jgroups.stack.IpAddress;
 import org.jgroups.util.ConcurrentLinkedBlockingQueue;
 
 import urv.conf.PropertiesLoader;
@@ -48,8 +50,13 @@ public class VirtualDatagramSocket extends MulticastSocket {
 		}		
 	}	
 	
+	public VirtualDatagramSocket(int port, Address addr) throws IOException {
+		this(port, ((IpAddress) addr).getIpAddress());
+	}
+
 	//	PUBLIC METHODS --
 	
+
 	/**
 	 * Closes this virtual datagram socket.
 	 *
@@ -178,10 +185,13 @@ public class VirtualDatagramSocket extends MulticastSocket {
 	
 	private void sendBroadcast(DatagramPacket p){
 		// Obtain the list of receivers
-		List<InetAddress> neighbours = vni.getNeighbours(getLocalAddress());
-		for (InetAddress addr : neighbours){
-			if (addr!=null){ // Modified 31-04-2008
-				Queue<DatagramPacket> queue = receivingQueues.getQueue(addr);
+		InetAddress localInetAddress = getLocalAddress();
+		Address localAddress = VirtualAddressGenerator.getAddress(localInetAddress);
+		List<Address> neighbours = vni.getNeighbours(localAddress);
+		for (Address addr : neighbours){
+			if (addr instanceof IpAddress){
+				IpAddress ipAddress = (IpAddress) addr;
+				Queue<DatagramPacket> queue = receivingQueues.getQueue(ipAddress.getIpAddress());
 				sendToQueueProb(p,queue);
 			}			
 		}

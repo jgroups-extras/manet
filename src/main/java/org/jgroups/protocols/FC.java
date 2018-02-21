@@ -1,28 +1,39 @@
 package org.jgroups.protocols;
 
-import org.jgroups.*;
-import org.jgroups.annotations.GuardedBy;
-import org.jgroups.annotations.ManagedAttribute;
-import org.jgroups.annotations.ManagedOperation;
-import org.jgroups.annotations.Property;
-import org.jgroups.stack.Protocol;
-import org.jgroups.util.BoundedList;
-import org.jgroups.util.Streamable;
-import urv.bwcalc.BwData;
-import urv.conf.PropertiesLoader;
-import urv.olsr.data.OLSRNode;
-import urv.olsr.mcast.TopologyEvent;
-
-import java.io.*;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.*;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
+
+import org.jgroups.Address;
+import org.jgroups.Event;
+import org.jgroups.Global;
+import org.jgroups.Header;
+import org.jgroups.Message;
+import org.jgroups.View;
+import org.jgroups.annotations.GuardedBy;
+import org.jgroups.annotations.ManagedAttribute;
+import org.jgroups.annotations.ManagedOperation;
+import org.jgroups.annotations.Property;
+import org.jgroups.stack.Protocol;
+import org.jgroups.util.BoundedList;
+
+import urv.bwcalc.BwData;
+import urv.conf.PropertiesLoader;
+import urv.olsr.data.OLSRNode;
+import urv.olsr.mcast.TopologyEvent;
 
 
 /**
@@ -274,7 +285,8 @@ public class FC extends Protocol {
         return printMap(sent);
     }
 
-    public void resetStats() {
+    @Override
+	public void resetStats() {
         super.resetStats();
         num_blockings=0;
         num_credit_responses_sent=num_credit_responses_received=num_credit_requests_received=num_credit_requests_sent=0;
@@ -312,7 +324,8 @@ public class FC extends Protocol {
     }
 
 
-    public Object down(Message msg) {
+    @Override
+	public Object down(Message msg) {
         int length=msg.getLength();
         Address dest=msg.getDest();
 
@@ -391,14 +404,16 @@ public class FC extends Protocol {
         return down_prot.down(msg);
     }
 
-    public void init() throws Exception {
+    @Override
+	public void init() throws Exception {
         super.init();
         if(min_credits == 0)
             min_credits=(long)((double)max_credits * min_threshold);
         max_credits_constant=max_credits;
     }
 
-    public void start() throws Exception {
+    @Override
+	public void start() throws Exception {
         super.start();
         sent_lock.lock();
         try {
@@ -409,7 +424,8 @@ public class FC extends Protocol {
             sent_lock.unlock();
         }
     }
-    public void stop() {
+    @Override
+	public void stop() {
         super.stop();
         sent_lock.lock();
         try {
@@ -444,7 +460,8 @@ public class FC extends Protocol {
         }
     }
 
-    public Object up(Event evt) {
+    @Override
+	public Object up(Event evt) {
         switch(evt.getType()) {
         	case Event.SET_LOCAL_ADDRESS:
 				localAddress=evt.getArg();
@@ -457,7 +474,8 @@ public class FC extends Protocol {
     }
 
 
-    public Object up(Message msg) {
+    @Override
+	public Object up(Message msg) {
         // JGRP-465. We only deal with msgs to avoid having to use a concurrent collection; ignore views,
         // suspicions, etc which can come up on unusual threads.
         if(ignore_thread == null && ignore_synchronous_response)
@@ -771,12 +789,7 @@ public class FC extends Protocol {
         	OLSRNode neighbor = new OLSRNode();        	
             //add members not in membership to received and sent hashmap (with full credits)
             for(Address addr: mbrs) {
-                //Modify the address of the neighbor variable
-                try {
-					neighbor.setValue(InetAddress.getByName(addr.toString().split(":")[0]));
-				} catch (UnknownHostException e) {
-					e.printStackTrace();
-				}
+                neighbor.setValue(addr);
 				//The received map is filled with our own capacity depending on the distance 
 				//of the neighbour
                 received.put(addr, getDynamicCredit(neighbor, updateEvent, RECEIVED_CREDITS));
@@ -862,7 +875,7 @@ public class FC extends Protocol {
    
 	//	INNER CLASSES --
 	
-    public static class FcHeader extends Header implements Streamable {
+    public static class FcHeader extends Header {
         public static final byte REPLENISH=1;
         public static final byte CREDIT_REQUEST=2; // the sender of the message is the requester
 
@@ -876,19 +889,25 @@ public class FC extends Protocol {
             this.type=type;
         }
 
-        public short                      getMagicId()     {return Constants.FC_ID;}
-        public Supplier<? extends Header> create()         {return FcHeader::new;}
-        public int                        serializedSize() {return Global.BYTE_SIZE;}
+        @Override
+		public short                      getMagicId()     {return Constants.FC_ID;}
+        @Override
+		public Supplier<? extends Header> create()         {return FcHeader::new;}
+        @Override
+		public int                        serializedSize() {return Global.BYTE_SIZE;}
 
-        public void writeTo(DataOutput out) throws Exception {
+        @Override
+		public void writeTo(DataOutput out) throws Exception {
             out.writeByte(type);
         }
 
-        public void readFrom(DataInput in) throws Exception {
+        @Override
+		public void readFrom(DataInput in) throws Exception {
             type=in.readByte();
         }
 
-        public String toString() {
+        @Override
+		public String toString() {
             switch(type) {
                 case REPLENISH:
                     return "REPLENISH";

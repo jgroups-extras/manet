@@ -1,7 +1,11 @@
 package urv.olsr.core;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.jgroups.Address;
 import org.jgroups.Message;
-import org.jgroups.stack.IpAddress;
+
 import urv.conf.ApplicationConfig;
 import urv.conf.PropertiesLoader;
 import urv.emulator.EmulationNeighborData;
@@ -23,11 +27,13 @@ import urv.olsr.mcast.MulticastGroupsTable;
 import urv.olsr.mcast.MulticastNetworkGraph;
 import urv.olsr.mcast.MulticastNetworkGraphComputationController;
 import urv.olsr.mcast.TopologyInformationSender;
-import urv.olsr.message.*;
-
-import java.net.InetAddress;
-import java.util.HashMap;
-import java.util.Map;
+import urv.olsr.message.HelloMessage;
+import urv.olsr.message.OLSRMessage;
+import urv.olsr.message.OLSRMessageSender;
+import urv.olsr.message.OLSRMessageUpper;
+import urv.olsr.message.OLSRPacket;
+import urv.olsr.message.OLSRPacketFactory;
+import urv.olsr.message.TcMessage;
 
 /**
  * This class contains all necessary structures to
@@ -97,6 +103,7 @@ public class OLSRController implements TopologyInformationSender{
 	/**
 	 * This methods is used to send topology events to the above layer.
 	 */
+	@Override
 	public void sendTopologyInformationEvent() {
 		for (Map.Entry<String,OLSRMessageUpper> stringOLSRMessageUpperEntry : olsrUpperTable.entrySet()){
 			OLSRMessageUpper upper =stringOLSRMessageUpperEntry.getValue();
@@ -116,7 +123,7 @@ public class OLSRController implements TopologyInformationSender{
 	 */
 	public void handleIncomingControlMessage(Message msg){
 		OLSRNode src = new OLSRNode(); 
-		src.setValue(((IpAddress)msg.getSrc()).getIpAddress()); // the hop immediately before
+		src.setValue(msg.getSrc()); // the hop immediately before
 		
 		Object obj = msg.getObject();
 		if (obj instanceof OLSRPacket){
@@ -161,7 +168,7 @@ public class OLSRController implements TopologyInformationSender{
 	 */
 	public Object handleOutgoingDataMessage(Message msg, OLSRNode dest, String mcast_addr_name) {		
 		OLSRNode nextHop = null;
-		IpAddress newDest = null;
+		Address newDest = null;
 		//Important, get a message copy! When we change the DST address, it may affect other protocols
 		Message msgCopy=msg.copy();		
 		try {
@@ -183,20 +190,20 @@ public class OLSRController implements TopologyInformationSender{
 			}
 				
 			// TODO Here, we use the destination port as the port of the next hop...
-			newDest = new IpAddress(nextHop.getAddress(),((IpAddress)msgCopy.getDest()).getPort()); 
+			newDest = nextHop.getAddress(); 
 			msgCopy.setDest(newDest);
 			
-			InetAddress srcAddr = null;
+			Address srcAddr = null;
 			if (msgCopy.getSrc()==null){
 				srcAddr = localNode.getAddress();
 			} else {
-				srcAddr = ((IpAddress)msgCopy.getSrc()).getIpAddress();
+				srcAddr = msgCopy.getSrc();
 			}
 			//Log information about the redirection of a message
-			Log.getInstance().info(srcAddr.getHostAddress()+"-->...-->"+
-					localNode.getAddress().getHostAddress()+"--> "+
-					nextHop.getAddress().getHostAddress()+"-->...-->"+
-					dest.getAddress().getHostAddress());
+			Log.getInstance().info(srcAddr.toString()+"-->...-->"+
+					localNode.getAddress().toString()+"--> "+
+					nextHop.getAddress().toString()+"-->...-->"+
+					dest.getAddress().toString());
 		} catch (Exception e){
 			e.printStackTrace();
 		}		

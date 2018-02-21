@@ -51,9 +51,12 @@ public class NeighborTable extends ExpiringEntryTable<OLSRNode,NeighborTableEntr
 	
 	//	OVERRIDDEN METHODS --
 	
+	@Override
 	public String toString(){
 		return "NEIGHBOR_TABLE["+localNode+"]"+"\n"+super.toString();
 	}
+	
+	@Override
 	public void updateBwOf(OLSRNode originatorNode) {
 		synchronized (super.getLock()){
 			//Update the node in the keySet
@@ -67,9 +70,12 @@ public class NeighborTable extends ExpiringEntryTable<OLSRNode,NeighborTableEntr
 			}
 		}
 	}
-	public int hashCode(){
+	
+	@Override
+	public synchronized int hashCode(){
 		return localNode.hashCode();
 	}
+	
 	@Override
 	public void onTableChange() {
 		//Every time a changed has been done, recompute NoNs
@@ -111,12 +117,12 @@ public class NeighborTable extends ExpiringEntryTable<OLSRNode,NeighborTableEntr
 	 * @return HelloMessage
 	 */
 	public HelloMessage createHelloMessage(){
-		HashMapSet<LinkCode,OLSRNode> map = new HashMapSet<LinkCode,OLSRNode>();
+		HashMapSet<LinkCode,OLSRNode> map = new HashMapSet<>();
 		synchronized (super.getLock()) {
 			for (OLSRNode node:this.keySet()){
 				NeighborTableEntry entry = getEntry(node);
 				
-				map.addToSet((LinkCode)(entry.getLinkCode().clone()),(OLSRNode)node.copy());
+				map.addToSet((LinkCode)(entry.getLinkCode().clone()),node.copy());
 			}
 		}
 		HelloMessage hm = new HelloMessage(map);
@@ -138,7 +144,7 @@ public class NeighborTable extends ExpiringEntryTable<OLSRNode,NeighborTableEntr
 		OLSRSet copy = new OLSRSet();
 		synchronized (super.getLock()) {
 			for(OLSRNode node:this.keySet()){
-				copy.add((OLSRNode)node.copy());
+				copy.add(node.copy());
 			}
 		}
 		return copy;
@@ -154,7 +160,7 @@ public class NeighborTable extends ExpiringEntryTable<OLSRNode,NeighborTableEntr
 			for(OLSRNode node:this.keySet()){
 				LinkCode status = this.getEntry(node).getLinkCode();
 				if (status.getNeighborType()==LinkCode.MPR_NEIGH || status.getNeighborType()==LinkCode.SYM_NEIGH)
-					copy.add((OLSRNode)node.copy());
+					copy.add(node.copy());
 			}
 		}
 		return copy;

@@ -61,7 +61,7 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
     		this.notifier = this.controller.getMessageNotifier();
     		this.groupMembershipInformation = this.controller.getGroupMembershipNotifier();
 	    	groupMembershipInformation.newGroupJoined(
-              mcastAddr.toInetAddress(), getInetAddress(channel.getAddress()), this);
+              mcastAddr, channel.getAddress(), this);
 	    }
 	}
 
@@ -81,12 +81,14 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 	}
 
 
-    public void receive(Message msg) {
+    @Override
+	public void receive(Message msg) {
         if(listener != null)
             listener.receive(msg);
     }
 
-    public void viewAccepted(View view) {
+    @Override
+	public void viewAccepted(View view) {
         notifyViewChange(view);
     }
 
@@ -128,7 +130,7 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 		//If we have neighbors, send the message to them
 		if (graph!=null){
 			OLSRNode localNode = new OLSRNode();
-			localNode.setValue(getInetAddress(getLocalAddress()));
+			localNode.setValue(getLocalAddress());
 			for (OLSRNode node : graph.getNeighbours(localNode)){
 				try {
 					send(createMessage(node.getJGroupsAddress(),content));
@@ -138,15 +140,17 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 			}		
 		}
 	}
+	
 	@Override
-	public synchronized List<InetAddress> getInetAddressesOfGroupMebers () {
-		List<InetAddress> addresses =new ArrayList<>();
+	public synchronized List<Address> getAddressesOfGroupMebers () {
+		List<Address> addresses =new ArrayList<>();
 		if (getView()==null) return addresses;
 		for (Address jGroupsAddress : getView().getMembers()){
-			addresses.add(getInetAddress(jGroupsAddress));
+			addresses.add(jGroupsAddress);
 		}
 		return addresses;
 	}
+	
 	@Override
 	public void close() {
 	    Util.close(channel);
@@ -164,7 +168,8 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 		}
 	}
 
-    public void setReceiver(Receiver r) {
+    @Override
+	public void setReceiver(Receiver r) {
         channel.setReceiver(r);
     }
 
@@ -176,9 +181,9 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 	 */
 	private Message createMessage(Address dst, Serializable content) {
 		Message msg;
-		InetAddress dstInetAddress = getInetAddress(dst);
 		//Set destination if it is null (it is a Multicast address)
-		if (dstInetAddress==null) dstInetAddress = mcastAddr.getMcastAddress();
+		Address dstAddress = dst;
+		if (dstAddress==null) dstAddress = mcastAddr;
 		if (content instanceof Message){
 			msg = (Message) content;
 		} else {
@@ -186,22 +191,27 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 			if (PropertiesLoader.isEmulated()){ 
 				seqNumber++;
 				msg.setObject(new SequenceNumberMessageWrapper(seqNumber,content));
-				notifier.newMessageSent(msg, getLocalInetAddress(), dstInetAddress, seqNumber, channel.getView());
+				notifier.newMessageSent(msg, getLocalAddress(), dstAddress, seqNumber, channel.getView());
 			}else msg.setObject(content);
 		}
 		msg.setSrc(new IpAddress(getLocalInetAddress(),PropertiesLoader.getUnicastPort()));
-		msg.setDest(new IpAddress(dstInetAddress,PropertiesLoader.getUnicastPort()));
+		msg.setDest(dstAddress);
 		return msg;
 	}
-    private static InetAddress	getInetAddress(Address dest) {
-		return ((IpAddress)dest).getIpAddress();
-	}
+
 	/**
 	 * Returns an InetAddress from the local Address
 	 * @return
 	 */
 	private InetAddress getLocalInetAddress() {
-		return ((IpAddress)getLocalAddress()).getIpAddress();
+		Address localAddress = getLocalAddress();
+		if (localAddress instanceof IpAddress) {
+			return ((IpAddress)localAddress).getIpAddress();
+		}
+		if (localAddress == null) {
+			return null;
+		}
+		throw new IllegalStateException("local address " + localAddress + " is of unexpected type: " + localAddress.getClass().getCanonicalName()); 
 	}
 	
     /* **********************************************
@@ -217,25 +227,24 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 	private Message getReceivedMessage(Message msg) {		
 		if (PropertiesLoader.isEmulated()==false){
 			return msg;
-		} else {
-			//Check application messages
-			//In the emulation we will add a seq number to check that all messages
-			//get to their destinations
-			if (msg.getObject() instanceof SequenceNumberMessageWrapper){
-				SequenceNumberMessageWrapper messageWrapper = (SequenceNumberMessageWrapper)msg.getObject();
-				int seq = messageWrapper.getSeqNumber();
-				Serializable content = messageWrapper.getContent();
-				msg.setObject(content);
-				Address addr = msg.getDest();
-				if (addr == null) {
-					//Now notify that we have received this message
-					notifier.newMessageReceived(msg,getInetAddress(msg.getSrc()),getInetAddress(msg.getDest()),getLocalInetAddress(),seq);
-				} else {
-					//Now notify that we have received this message
-					notifier.newMessageReceived(msg,getInetAddress(msg.getSrc()),getInetAddress(msg.getDest()),getInetAddress(msg.getDest()),seq);
-				}
-			}
-			return msg;
 		}
+		//Check application messages
+		//In the emulation we will add a seq number to check that all messages
+		//get to their destinations
+		if (msg.getObject() instanceof SequenceNumberMessageWrapper){
+			SequenceNumberMessageWrapper messageWrapper = (SequenceNumberMessageWrapper)msg.getObject();
+			int seq = messageWrapper.getSeqNumber();
+			Serializable content = messageWrapper.getContent();
+			msg.setObject(content);
+			Address addr = msg.getDest();
+			if (addr == null) {
+				//Now notify that we have received this message
+				notifier.newMessageReceived(msg, msg.getSrc(), msg.getDest(), getLocalAddress(), seq);
+			} else {
+				//Now notify that we have received this message
+				notifier.newMessageReceived(msg, msg.getSrc(), msg.getDest(), msg.getDest(), seq);
+			}
+		}
+		return msg;
 	}
 }

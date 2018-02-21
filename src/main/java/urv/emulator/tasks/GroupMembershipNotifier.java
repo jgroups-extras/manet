@@ -1,8 +1,9 @@
 package urv.emulator.tasks;
 
-import java.net.InetAddress;
 import java.util.LinkedList;
 import java.util.List;
+
+import org.jgroups.Address;
 
 import urv.machannel.MChannel;
 
@@ -26,7 +27,7 @@ public class GroupMembershipNotifier {
 	 * @param localAddress
 	 * @param channel
 	 */
-	public synchronized void newGroupJoined(InetAddress multicastAddress, InetAddress localAddress,MChannel mChannel){
+	public synchronized void newGroupJoined(Address multicastAddress, Address localAddress,MChannel mChannel){
 		for (EmulationGroupMembershipListener listener:listenerList){
 			listener.onGroupCreated(multicastAddress,localAddress,mChannel);
 		}

@@ -1,9 +1,9 @@
 package urv.emulator.tasks.stats;
 
-import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.jgroups.Address;
 import org.jgroups.View;
 
 import urv.conf.PropertiesLoader;
@@ -27,10 +27,10 @@ public class MembershipStatsTask extends EmulatorTask implements EmulationGroupM
 
 	//	CLASS FIELDS --
 	
-	private HashMapSet<InetAddress,InetAddress> registeredMembership = new HashMapSet<InetAddress,InetAddress>();
+	private HashMapSet<Address,Address> registeredMembership = new HashMapSet<>();
 	//Keeps all the created channels created in a group (with the same multicast address) so we can check
 	//the view against the one in registeredMembership
-	private HashMapSet<InetAddress,MChannel> channelMembership = new HashMapSet<InetAddress,MChannel>();	
+	private HashMapSet<Address,MChannel> channelMembership = new HashMapSet<>();	
 	private Object lock = new Object();
 	
 	//	CONSTRUCTORS --
@@ -48,6 +48,7 @@ public class MembershipStatsTask extends EmulatorTask implements EmulationGroupM
 	/**
 	 * Add the code that should be launched in the run method
 	 */
+	@Override
 	public void doSomething() {
 		
 		//In first place, register the class as listener in order to intercept
@@ -69,7 +70,9 @@ public class MembershipStatsTask extends EmulatorTask implements EmulationGroupM
 			}
 		}
 	}
-	public void onGroupCreated(InetAddress multicastAddress, InetAddress localAddress, MChannel mChannel) {
+	
+	@Override
+	public void onGroupCreated(Address multicastAddress, Address localAddress, MChannel mChannel) {
 		System.out.println("*** Group for channel "+multicastAddress+" on "+mChannel.getLocalAddress()+" has been created");
 		synchronized (lock) {
 			//Store info
@@ -87,14 +90,14 @@ public class MembershipStatsTask extends EmulatorTask implements EmulationGroupM
 	 */
 	private void checkMembership() {
 		synchronized (lock) {
-			Set<InetAddress> mcastAddresses = registeredMembership.keySet();			
+			Set<Address> mcastAddresses = registeredMembership.keySet();			
 			String output ="";
 			//Get all groups
-			for (InetAddress mcastAddr:mcastAddresses){
+			for (Address mcastAddr:mcastAddresses){
 				//For each group, get all the nodes that have registered a channel
-				HashSet<InetAddress> nodeList = registeredMembership.get(mcastAddr);
+				HashSet<Address> nodeList = registeredMembership.get(mcastAddr);
 				String str = ("Registered view for all nodes should be ("+nodeList.size()+")");
-				for(InetAddress node:nodeList){
+				for(Address node:nodeList){
 					str += " "+node;
 				}				
 				//And all the channels registered, in order to get the view

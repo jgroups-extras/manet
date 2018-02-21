@@ -1,11 +1,14 @@
 package org.jgroups.protocols;
 
-import org.jgroups.*;
+import org.jgroups.Address;
+import org.jgroups.Event;
+import org.jgroups.Global;
+import org.jgroups.Header;
+import org.jgroups.Message;
 import org.jgroups.annotations.Property;
-import org.jgroups.stack.IpAddress;
 import org.jgroups.stack.Protocol;
+
 import urv.bwcalc.BwData;
-import urv.conf.PropertiesLoader;
 import urv.log.Log;
 import urv.olsr.core.OLSRController;
 import urv.olsr.data.OLSRNode;
@@ -56,10 +59,10 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
         if (!multicast) {
             // The message is unicast
             OLSRNode destNode = new OLSRNode();
-            destNode.setValue(((IpAddress) dest).getIpAddress());
+            destNode.setValue(dest);
             // Setting the source address of the message: this address will not change
             // along the message path.
-            msg.setSrc(new IpAddress(localNode.getAddress(),PropertiesLoader.getUnicastPort()));
+            msg.setSrc(localNode.getAddress());
             //We send the message through the first stack (only the first stack routes messages
             //through the network)
 					
@@ -79,6 +82,7 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		return up_prot.up(new Event(Event.VIEW_CHANGE,new TopologyEvent(
 				networkGraph, routingTable, localNode)));
 	}
+	
 	@Override
 	public Object sendControlMessage(Message msg){
 		OLSRHeader header = new OLSRHeader();
@@ -87,6 +91,7 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		log.debug("Sending control message...");
 		return down_prot.down(msg);
 	}
+	
 	@Override
 	public Object sendDataMessage(Message msg, OLSRNode finalDest,String mcast_addr_name){
 		OLSRHeader header = new OLSRHeader();
@@ -99,6 +104,7 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		msg.putHeader(id, header);
 		return down_prot.down(msg);
 	}
+	
 	/**
 	 * Creates a new event with the message and sends a the message up
 	 * in this protocol stack
@@ -133,7 +139,7 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
         switch (evt.getType()) {
             case Event.SET_LOCAL_ADDRESS:
                 localNode = new OLSRNode();
-                localNode.setValue(((IpAddress) evt.getArg()).getIpAddress());
+                localNode.setValue((Address) evt.getArg());
                 startController();
                 return up_prot.up(evt);
             case Event.CONFIG:
@@ -145,7 +151,8 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
         }
     }
 
-    public Object up(Message msg) {
+    @Override
+	public Object up(Message msg) {
         Header obj=msg.getHeader(id);
         if (!(obj instanceof OLSRHeader)) {
             //OLSR will also use the BW_CALC messages to perform the throughput

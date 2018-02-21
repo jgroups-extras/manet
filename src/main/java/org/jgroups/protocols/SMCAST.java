@@ -1,19 +1,18 @@
 package org.jgroups.protocols;
 
+import java.util.Set;
+
 import org.jgroups.Address;
 import org.jgroups.Event;
 import org.jgroups.Global;
 import org.jgroups.Message;
 import org.jgroups.annotations.MBean;
 import org.jgroups.annotations.Property;
-import org.jgroups.stack.IpAddress;
 import org.jgroups.stack.Protocol;
+
 import urv.olsr.data.OLSRNode;
 import urv.olsr.mcast.TopologyEvent;
 import urv.omolsr.data.OMOLSRNetworkGraph;
-
-import java.io.Serializable;
-import java.util.Set;
 
 
 /**
@@ -56,8 +55,8 @@ public class SMCAST extends Protocol {
                     // TODO Here, we use the destination multicast port as the port of the unicast destination...
                     // TODO or port=0 if dest==null
 							
-                    Address ucastDest = new IpAddress(n.getAddress(),dest==null ? 0 : ((IpAddress)dest).getPort());
-                    Message ucastMsg = new Message(ucastDest, (Serializable)msg.getObject());
+                    Address ucastDest = n.getAddress();
+                    Message ucastMsg = new Message(ucastDest, (Object)msg.getObject());
 							
                     // TODO Do we need a SMCAST header?? Probably not now, because upper protocols that handle multicast
                     // messages will put their own headers (NAKACK,...)
@@ -89,6 +88,7 @@ public class SMCAST extends Protocol {
 	
 	 @Override
 	public void stop() {
+		 // do nothing
 	}
 	
 	/**
@@ -114,7 +114,7 @@ public class SMCAST extends Protocol {
 		case Event.SET_LOCAL_ADDRESS:
 
 			localNode = new OLSRNode();
-			localNode.setValue(((IpAddress) evt.getArg()).getIpAddress());
+			localNode.setValue((Address) evt.getArg());
 			//System.out.println("SMCAST: Event.SET_LOCAL_ADDRESS: "+ localNode.toString());
 			
 			//startController();

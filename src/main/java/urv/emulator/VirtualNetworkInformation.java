@@ -5,6 +5,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import org.jgroups.Address;
+
 import urv.conf.PropertiesLoader;
 import urv.emulator.topology.graph.GraphChanges;
 import urv.emulator.topology.graph.GraphInformation;
@@ -69,7 +71,7 @@ public class VirtualNetworkInformation {
 	 * @param addr2
 	 * @return
 	 */
-	public boolean areNeighbours(InetAddress addr1, InetAddress addr2){		
+	public boolean areNeighbours(Address addr1, Address addr2){		
 		//Perform translation to nodes
 		Node node1 = addressGenerator.getNodeNumber(addr1);
 		Node node2 = addressGenerator.getNodeNumber(addr2);		
@@ -77,13 +79,13 @@ public class VirtualNetworkInformation {
 		return networkGraph.areNeighbours(node1,node2);
 	}
 	/**
-	 * Returns a new InetAddress for an existing node in the simulation
+	 * Returns a new Address for an existing node in the simulation
 	 * @param nodeId id of the node in the simulation
 	 * @return
 	 */
-	public InetAddress getEmuNodeAddress(int nodeId){		
+	public Address getEmuNodeAddress(int nodeId){		
 		//Create a hostname and IpAddress
-		return addressGenerator.getEmuInetAddress(nodeId);
+		return addressGenerator.getEmuAddress(nodeId);
 	}
 	/**
 	 * Returns a list with all the neighbours of the given address
@@ -92,13 +94,13 @@ public class VirtualNetworkInformation {
 	 * @param addr
 	 * @return
 	 */
-	public List<InetAddress> getNeighbours(InetAddress addr){
+	public List<Address> getNeighbours(Address addr){
 		//Perform translation to nodes
 		Node node1 = addressGenerator.getNodeNumber(addr);
 		Set<Node> nodeList = networkGraph.getNeighbours(node1);
-		List<InetAddress> inetList = new LinkedList<InetAddress>();
+		List<Address> inetList = new LinkedList<>();
 		for(Node n:nodeList){
-			inetList.add(addressGenerator.getInetAddress(n));
+			inetList.add(addressGenerator.getAddress(n));
 		}		
 		return inetList;
 	}
@@ -129,7 +131,7 @@ public class VirtualNetworkInformation {
 		}		
 	}	
 	/**
-	 * Returns a new InetAddress for a new node in the simulation
+	 * Returns a new Address for a new node in the simulation
 	 * Also the mapping between the address and the node number 
 	 * is stored in the address generator
 	 * Provides a virtual IP and hostname
@@ -137,9 +139,9 @@ public class VirtualNetworkInformation {
 	 * @param nodeId id of the node in the simulation
 	 * @return
 	 */
-	private InetAddress createEmuNodeAddress(int nodeId){		
+	private Address createEmuNodeAddress(int nodeId){		
 		//Create a hostname and IpAddress
-		InetAddress addr = addressGenerator.createEmuInetAddress(nodeId);		
+		Address addr = addressGenerator.createEmuAddress(nodeId);		
 		return addr;
 	}	
 	/**
@@ -160,6 +162,14 @@ public class VirtualNetworkInformation {
 	}	
 	private void performInitializationChanges() {
 		networkGraph = graphInformation.getGraph();
-		graphChanges.performChangesUntilTimeInterval(1,networkGraph);		
+		graphChanges.performChangesUntilTimeInterval(1, networkGraph);		
+	}
+
+	public boolean areNeighbours(InetAddress addr1, InetAddress addr2) {
+		//Perform translation to nodes
+		Node node1 = addressGenerator.getNodeNumber(addr1);
+		Node node2 = addressGenerator.getNodeNumber(addr2);		
+		//Return neighbour relationship
+		return networkGraph.areNeighbours(node1,node2);
 	}	
 }

@@ -1,17 +1,24 @@
 package urv.app.samples;
 
-import org.jgroups.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
+
+import org.jgroups.Address;
+import org.jgroups.Message;
+import org.jgroups.Receiver;
+import org.jgroups.View;
 import org.jgroups.stack.IpAddress;
+
 import urv.app.Application;
 import urv.machannel.MChannel;
 import urv.olsr.mcast.MulticastAddress;
 import urv.util.network.NetworkUtils;
-
-import java.io.*;
-import java.net.InetAddress;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
 
 /**
  * @author Gerard Paris Aixala
@@ -96,8 +103,8 @@ public class SimpleSenderApplication extends Application implements Receiver {
 			mChannel.send(NetworkUtils.getJGroupsAddresFor(mcastAddr.toInetAddress()),
 					mChannel.getLocalAddress(), "MSG "+i
 				+" from "+mChannel.getLocalAddress()+" to "+mcastAddr);
-			String str=("Nodes for "+mChannel.getLocalAddress() +" = ("+mChannel.getInetAddressesOfGroupMebers().size()+") ");
-			for(InetAddress addr:mChannel.getInetAddressesOfGroupMebers()){
+			String str=("Nodes for "+mChannel.getLocalAddress() +" = ("+mChannel.getAddressesOfGroupMebers().size()+") ");
+			for(Address addr:mChannel.getAddressesOfGroupMebers()){
 				str+=(addr+":");
 			}
 			System.out.println("-- " + str);

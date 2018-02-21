@@ -1,7 +1,8 @@
 package urv.emulator;
 
-import java.net.InetAddress;
 import java.util.Hashtable;
+
+import org.jgroups.Address;
 
 import urv.olsr.data.OLSRNode;
 import urv.olsr.data.neighbour.NeighborTable;
@@ -18,12 +19,12 @@ public class EmulationNeighborData {
 	//	CLASS FIELDS --
 	
 	private static EmulationNeighborData instance = new EmulationNeighborData();
-	private Hashtable<InetAddress,NeighborTable> table;
+	private Hashtable<Address,NeighborTable> table;
 	
 	//	CONSTRUCTORS --
 	
 	private EmulationNeighborData() {		
-		this.table = new Hashtable<InetAddress,NeighborTable>();
+		this.table = new Hashtable<>();
 	}
 	
 	//	STATIC METHODS --
@@ -45,7 +46,7 @@ public class EmulationNeighborData {
 	 * @param neighborTable
 	 */
 	public void registerNeighborTable(OLSRNode node, NeighborTable neighborTable){
-		InetAddress address = node.getAddress();
+		Address address = node.getAddress();
 		table.put(address,neighborTable);
 	}
 	
@@ -57,7 +58,7 @@ public class EmulationNeighborData {
 	 * @return
 	 */
 	public NeighborTable getNeighbortable(OLSRNode node){
-		InetAddress address = node.getAddress();
+		Address address = node.getAddress();
 		return table.get(address);
 	}
 }

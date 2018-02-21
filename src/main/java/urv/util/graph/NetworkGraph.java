@@ -10,6 +10,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import org.jgroups.Address;
+import org.jgroups.util.ByteArrayDataOutputStream;
+import org.jgroups.util.Streamable;
+
 import urv.olsr.data.BandwidthUpdatable;
 import urv.olsr.data.OLSRNode;
 
@@ -24,30 +28,35 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 
 	//	CLASS FIELDS --
 	
-	private LinkedList<Edge> edges = null;
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	
+	private LinkedList<Edge<N>> edges = null;
 	private Set<N> nodes = null;
 	//Map which contains a list of nodes (neighbours) for each node in the network
 	//This is an static approach, since we cannot remove edges from the graph, and hence we
 	//cannot remove neighbours
-	private HashMapSet<N,N> neighbourList = new HashMapSet<N,N>();
+	private HashMapSet<N,N> neighbourList = new HashMapSet<>();
 	private LockObject lock = new LockObject();
 	
 	//	CONSTRUCTORS --
 	
 	public NetworkGraph(){	
-		nodes = new HashSet<N>();
-		edges = new LinkedList<Edge>();
+		nodes = new HashSet<>();
+		edges = new LinkedList<>();
 	}
 	
 	//	OVERRIDDEN METHODS --
 	
 	@Override
 	public Object clone(){
-		NetworkGraph newGraph = new NetworkGraph();	
+		NetworkGraph<N, W> newGraph = new NetworkGraph<>();	
 		synchronized (lock) {	
-			for (Edge e:this.edges){
+			for (Edge<N> e:this.edges){
 				newGraph.addEdge(e.getSource(),e.getTarget(),e.getWeight());
-				// Nodes and neighbors automatically added by addEdge
+				// Nodes and neighbours automatically added by addEdge
 			}	
 		}
 		return newGraph;
@@ -64,7 +73,7 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 				buffer.append("\t"+n.toString()+"\n");
 			}	
 			buffer.append("Edges:"+"\n");
-			for (Edge e: edges){
+			for (Edge<N> e: edges){
 				buffer.append("\t"+e.toString()+"\n");
 			}			
 			buffer.append("Neighbours:"+"\n");
@@ -81,20 +90,30 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	@Override
 	public void updateBwOf(OLSRNode node) {
 		synchronized (lock) {
-			for (OLSRNode currentNode : (Set<OLSRNode>) getNodeList()){
-				if (currentNode.equals(node)){
-					currentNode.updateBandwidth(node);
+			for (N currentNode : getNodeList()){
+				if (currentNode instanceof OLSRNode && currentNode.equals(node)){
+					((OLSRNode) currentNode).updateBandwidth(node);
 					break;
 				}
 			}	
-			for (Edge<OLSRNode> edge : getEdges()){
-				if (edge.getSource().equals(node)) edge.getSource().updateBandwidth(node);
-				if (edge.getTarget().equals(node)) edge.getTarget().updateBandwidth(node);
+			for (Edge<N> edge : getEdges()){
+				N source = edge.getSource();
+				N target = edge.getTarget();
+				if (source instanceof OLSRNode && source.equals(node)) {
+					((OLSRNode) source).updateBandwidth(node);
+				}
+				if (target instanceof OLSRNode && target.equals(node)) {
+					((OLSRNode) target).updateBandwidth(node);
+				}
 			}
-			for (OLSRNode currentNode : (Set<OLSRNode>) neighbourList.keySet()){
-				if (currentNode.equals(node)) currentNode.updateBandwidth(node);
-				for (OLSRNode noN : (HashSet<OLSRNode>) neighbourList.getSet((N) node)){
-					if (noN.equals(node)) noN.updateBandwidth(node);
+			for (N currentNode : neighbourList.keySet()){
+				if (currentNode instanceof OLSRNode && currentNode.equals(node)){
+					((OLSRNode) currentNode).updateBandwidth(node);
+					for (N noN : neighbourList.getSet((N) node)){
+						if (noN instanceof OLSRNode && noN.equals(node)) {
+							((OLSRNode) noN).updateBandwidth(node);
+						}
+					}
 				}
 			}	
 		}		
@@ -110,7 +129,7 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	 */
 	public void addEdge(N source, N target, Weight weight){
 		synchronized (lock) {
-			edges.add(new Edge<N>(source,target,weight));			
+			edges.add(new Edge<>(source,target,weight));			
 			neighbourList.addToSet(source,target);
 			if (!nodes.contains(source))
 				nodes.add(source);
@@ -155,7 +174,7 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 		}
 	}
 	public void assignWeightToAllEdges(Float float1) {
-		for (Edge e:this.edges){
+		for (Edge<?> e:this.edges){
 			e.getWeight().setValue(float1);
 		}
 	}
@@ -170,9 +189,9 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 			neighbourList.clear();
 		}		
 	}	
-	public Edge getEdgeBetween(N node1, N node2) {
+	public Edge<N> getEdgeBetween(N node1, N node2) {
 		synchronized (lock) {
-			for(Edge e:edges){
+			for(Edge<N> e:edges){
 				if (e.getSource().equals(node1) && e.getTarget().equals(node2)){
 					return e;
 				}
@@ -187,7 +206,7 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	 * Return edge list from actual network graph
 	 * @return
 	 */
-	public LinkedList<Edge> getEdges(){		
+	public LinkedList<Edge<N>> getEdges(){		
 		synchronized (lock) {
 			return this.edges;
 		}
@@ -196,10 +215,10 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	 * Return edge list where the node n is the source or the target
 	 * @return
 	 */
-	public LinkedList<Edge> getEdges(N node){
-		LinkedList<Edge> edgeList = new LinkedList<Edge>(); 
+	public LinkedList<Edge<N>> getEdges(N node){
+		LinkedList<Edge<N>> edgeList = new LinkedList<>(); 
 		synchronized (lock) {
-			for(Edge e:edges){
+			for(Edge<N> e:edges){
 				if (e.getSource().equals(node) || e.getTarget().equals(node)){
 					edgeList.add(e);
 				}
@@ -214,7 +233,7 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	 * @return
 	 */
 	public Set<N> getLinkedNodes(N node1) {
-		Set<N> linkedNodes = new HashSet<N>();		
+		Set<N> linkedNodes = new HashSet<>();		
 		synchronized (lock) {
 			for (N n:this.nodes){
 				if (neighbourList.existsInList(n,node1) ||
@@ -276,7 +295,7 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	 * @param w
 	 */	
 	public void removeEdge(N src, N dst, Weight w) {
-		Edge<N> edge = new Edge<N>(src,dst,w);
+		Edge<N> edge = new Edge<>(src,dst,w);
 		synchronized (lock) {
 			if (edges.contains(edge)){
 				//remove the edge
@@ -294,16 +313,16 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	 */
 	public void removeEdges(N node){		
 		synchronized (lock) {
-			Iterator<Edge> it = edges.iterator();
+			Iterator<Edge<N>> it = edges.iterator();
 			while(it.hasNext()){
-				Edge e = it.next();
+				Edge<N> e = it.next();
 				if (e.getSource().equals(node)){ 
 					it.remove();
-					neighbourList.removeFromSet(node,(N)e.getTarget());
+					neighbourList.removeFromSet(node,e.getTarget());
 				}
 				else if (e.getTarget().equals(node)){
 					it.remove();
-					neighbourList.removeFromSet((N)e.getSource(),node);
+					neighbourList.removeFromSet(e.getSource(),node);
 				}
 			}
 			nodes.remove(node);			
@@ -315,9 +334,9 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	 */
 	public void removeEdges(N node1, N node2){		
 		synchronized (lock) {
-			Iterator<Edge> it = edges.iterator();
+			Iterator<Edge<N>> it = edges.iterator();
 			while(it.hasNext()){
-				Edge e = it.next();
+				Edge<N> e = it.next();
 				if (e.getSource().equals(node1) && e.getTarget().equals(node2)){
 					it.remove();
 					neighbourList.removeFromSet(node1,node2);
@@ -335,23 +354,24 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	 */
 	public void removeEdgesWithTarget(N node){
 		synchronized (lock) {
-			Iterator<Edge> it = edges.iterator();
+			Iterator<Edge<N>> it = edges.iterator();
 			while(it.hasNext()){
-				Edge e = it.next();
+				Edge<N> e = it.next();
 				if (e.getTarget().equals(node)){
 					it.remove();
-					neighbourList.removeFromSet((N)e.getSource(),node);
+					neighbourList.removeFromSet(e.getSource(),node);
 				}
 			}
 		}
-	}	
+	}
+	
 	public void removeIsolatedNodes() {
 		synchronized(lock){
-			Iterator it = nodes.iterator();
+			Iterator<N> it = nodes.iterator();
 			while (it.hasNext()){
-				N n = (N)it.next();
+				N n = it.next();
 				boolean isolated = true;
-				for (Edge e:this.edges){
+				for (Edge<?> e:this.edges){
 					if (e.getSource().equals(n) || e.getTarget().equals(n)){
 						isolated = false;
 					}
@@ -362,15 +382,16 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 			}
 		}		
 	}
+	
 	/**
 	 * Method that allows to print the network graph into a pajek file
 	 */
 	public String  toPajek(String fileName, boolean writeFile){
 		StringBuffer buffer = new StringBuffer();
 		int idNode = 0;
-		HashMap<String,Edge> edgesStored = new HashMap<String,Edge>();
-		Edge eTmp = null;
-		HashMap<Integer, Integer> idNodetoPajekNodes = new HashMap<Integer, Integer>();
+		HashMap<String,Edge<N>> edgesStored = new HashMap<>();
+		Edge<N> eTmp = null;
+		HashMap<Integer, Integer> idNodetoPajekNodes = new HashMap<>();
 		
 		synchronized (lock) {
 			buffer.append("*Vertices "+nodes.size()+"\n");
@@ -384,11 +405,11 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 			}	
 			buffer.append("*Edges"+"\n");
 			//Print the edge
-			for (Edge e: edges){
+			for (Edge<N> e: edges){
 				//Avoid printing double edges, if we have already print 1-2, we won't print 2-1, 
 				//they are bidirectional but we don't need to print both edge in the pajek file
 				if(edgesStored.get(e.toString())==null){
-					eTmp = new Edge<N>((N)e.getTarget(),(N)e.getSource(),e.getWeight());//insert the complementary edge of the bidirection
+					eTmp = new Edge<>(e.getTarget(),e.getSource(),e.getWeight());//insert the complementary edge of the bidirection
 					edgesStored.put(eTmp.toString(), eTmp);
 					buffer.append(idNodetoPajekNodes.get(getIdNode(e.getSource()))+" "+idNodetoPajekNodes.get(getIdNode(e.getTarget()))+" "+e.getWeight().getValue().intValue()+"\n");
 				}else{
@@ -396,27 +417,32 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 				}
 			}			
 			if(writeFile){
-				try {
-					FileWriter fw = new FileWriter(fileName);
+				try (FileWriter fw = new FileWriter(fileName)) {
 					fw.write(buffer.toString());
-					fw.close();
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
 			}			
 			return buffer.toString();
 		}
-	}	
+	}
+	
 	/**
 	 * Method that returns the id of the node.
 	 * When the node is an instance of Node, the id is itself
 	 * If the node is an instance of OLSRNode, the id is the composition of the 2 last bytes
 	 */
-	private int getIdNode(Object n){		
+	private static int getIdNode(Object n){		
 		int idNode = 0; 
 		if(n instanceof urv.olsr.data.OLSRNode){
-			byte addr[] = ((OLSRNode)n).getAddress().getAddress();
-			for ( int cnt=2;cnt<addr.length;cnt++ )  {  
+			byte addr[];
+			try {
+				addr = getBytes(((OLSRNode)n).getAddress());
+			} catch (Exception e) {
+				e.printStackTrace();
+				return -1;
+			}
+			for ( int cnt=addr.length - 2;cnt<addr.length;cnt++ )  {  
 			   idNode = (idNode*1000)+(addr[cnt]<0 ? addr[cnt]+256 : addr[cnt]) ;  
 			}
 		}else if(n instanceof urv.util.graph.Node){
@@ -436,30 +462,50 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	 */
 	private HashSet<N> getNeighborsRecursively(N node,int level) {		
 		Set<N> nodeSet = neighbourList.getSet(node);
-		List<N> newSet = new LinkedList<N>();		
+		List<N> newSet = new LinkedList<>();		
 		if (nodeSet != null) {
 			for (N nodeInSet : nodeSet) {
 				// Recursivity, end nodes will not enter here
-				if (level>10){
-					level = level;
+				newSet.addAll(getNeighborsRecursively(nodeInSet, level));
+				if (level <= 10){
+					level++;
 				}
-				newSet.addAll(getNeighborsRecursively(nodeInSet,level++));
 			}
 		}		
 		//End case
 		newSet.add(node);
 		if (newSet.size()>nodes.size())
 			System.err.println("ERROR: There are "+newSet.size() +" nodes in the set!!");
-		return new HashSet<N>(newSet);		
-	}	
+		return new HashSet<>(newSet);		
+	}
+	
+	/**
+	 * Serializes a Streamable object to a byte array
+	 * @param s object to serialize into bytes
+	 * @return serialized bytes
+	 * @throws Exception
+	 */
+	private static byte[] getBytes(Streamable s) throws Exception {
+		ByteArrayDataOutputStream baos = new ByteArrayDataOutputStream(255, true);
+		s.writeTo(baos);
+		return baos.buffer();
+	}
+	
 	/**
 	 * Method that returns the last two bytes of the node address
 	 */
-	private String getTwoLastBytes(Object n){		
+	private static String getTwoLastBytes(Object n){		
 		String lastTwoBytes = ""; 
 		if(n instanceof urv.olsr.data.OLSRNode){
-			byte addr[] = ((OLSRNode)n).getAddress().getAddress();
-			for ( int cnt=2;cnt<addr.length;cnt++ )  {  
+			Address address = ((OLSRNode)n).getAddress();
+			byte[] addr;
+			try {
+				addr = getBytes(address);
+			} catch (Exception e) {
+				e.printStackTrace();
+				return "-1";
+			}
+			for ( int cnt=addr.length - 2;cnt<addr.length;cnt++ )  {  
 				lastTwoBytes = lastTwoBytes+(addr[cnt]<0 ? addr[cnt]+256 : addr[cnt]);
 				if(cnt==2) lastTwoBytes+=".";
 			}
@@ -477,7 +523,12 @@ public class NetworkGraph<N,W> implements Serializable, BandwidthUpdatable{
 	 * To serialize the whole object we need that the
 	 * lock object implements Serializable
 	 */
-	private class LockObject implements Serializable{
+	class LockObject implements Serializable{
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
 		//Nothing
 	}
 }

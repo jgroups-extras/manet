@@ -1,15 +1,16 @@
 package urv.olsr.data;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+
 import org.jgroups.Address;
 import org.jgroups.Global;
 import org.jgroups.stack.IpAddress;
 import org.jgroups.util.SizeStreamable;
-import urv.conf.PropertiesLoader;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.net.InetAddress;
-import java.nio.ByteBuffer;
+import urv.conf.PropertiesLoader;
 
 /**
  * Object that represents a node in a network based in OLSR protocol.
@@ -23,7 +24,7 @@ public class OLSRNode implements SizeStreamable {
 
 	//	CLASS FIELDS --
 	
-	private InetAddress address;
+	private Address address;
 	//Bandwidth information about each node
 	private float bandwithCoefficient;
 	private long bwBytesCapacity;
@@ -38,12 +39,18 @@ public class OLSRNode implements SizeStreamable {
     /**
      * @return Returns the address.
      */
-    public InetAddress getAddress() {
+    public Address getAddress() {
         return address;
     }
 
     public Address getJGroupsAddress(){
-        return new IpAddress(address, PropertiesLoader.getUnicastPort());
+        try {
+			return new IpAddress(address.toString(), PropertiesLoader.getUnicastPort());
+		} catch (UnknownHostException e) {
+			// FIXME
+			e.printStackTrace();
+			return null;
+		}
     }
 
     public synchronized float getBandwithCoefficient() {
@@ -67,8 +74,8 @@ public class OLSRNode implements SizeStreamable {
         this.bwMessagesCapacity = bwMessagesCapacity;
         return this;
     }
-    public OLSRNode setValue(InetAddress address) {
-        this.address = address;
+    public OLSRNode setValue(Address address2) {
+        this.address = address2;
         return this;
     }
 
@@ -88,25 +95,29 @@ public class OLSRNode implements SizeStreamable {
         node.setBwMessagesCapacity(this.bwMessagesCapacity);
         return node;
     }
+	@Override
 	public boolean equals(Object obj){
 		OLSRNode node = (OLSRNode)obj;
 		return address.equals(node.address);
 	}
 
 
+	@Override
 	public int hashCode(){
 		return address.hashCode();
 	}
 
-
-    public int serializedSize() {
-        return Global.INT_SIZE *2 + Global.LONG_SIZE * 2;
+    @Override
+	public int serializedSize() {
+    	return address.serializedSize() + Global.FLOAT_SIZE + Global.LONG_SIZE * 2;
     }
 
-    public void readFrom(DataInput in) throws Exception {
-        byte[] a = new byte[4]; // 4 bytes (IPv4)
-        in.readFully(a, 0, 4);
-        this.address=InetAddress.getByAddress(a);
+    @Override
+	public void readFrom(DataInput in) throws Exception {
+        IpAddress ipAddress = new IpAddress();
+        ipAddress.readFrom(in); // Length byte followed by 4 (IPv4) or 6 (IPv6) data bytes
+        this.address = ipAddress;
+        byte[] a = new byte[4];
         in.readFully(a, 0, 4);	//read the bandwidth coefficient, 4 bytes
         this.bandwithCoefficient = ByteBuffer.wrap(a).getFloat();
         a = new byte[8];
@@ -116,10 +127,9 @@ public class OLSRNode implements SizeStreamable {
         this.bwMessagesCapacity = ByteBuffer.wrap(a).getLong();
 	}
 
-	// todo: handle IPv6, too. Method serializedSize() needs to be changed as well
-    public void writeTo(DataOutput out) throws Exception {
-        byte[] a = address.getAddress();  // 4 bytes (IPv4)
-        out.write(a, 0, a.length);
+    @Override
+	public void writeTo(DataOutput out) throws Exception {
+    	address.writeTo(out);
         ByteBuffer byteBuffer = ByteBuffer.allocate(4);
         byte[] b = byteBuffer.putFloat(bandwithCoefficient).array();
         out.write(b);
@@ -131,7 +141,8 @@ public class OLSRNode implements SizeStreamable {
         out.write(b);
     }
 
-    public String toString(){
+    @Override
+	public String toString(){
         return String.format("%s bw_bytes: %d bw_messages: %d bw_coefficient: %.2f",
                              address.toString(), bwBytesCapacity, bwMessagesCapacity, bandwithCoefficient);
     }

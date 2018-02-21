@@ -28,10 +28,11 @@ public class HashMapSet<K,V> extends HashMap<K,HashSet<V>>{
 	public void addToSet(K key,V value){
 		
 		HashSet<V> l =this.get(key);
-		if (l==null) l = new HashSet<V>();
+		if (l==null) l = new HashSet<>();
 		l.add(value);
 		this.put(key,l);
-	}	
+	}
+	
 	/**
 	 * Checks whether the given value exists in the set
 	 * of the given key
@@ -43,6 +44,7 @@ public class HashMapSet<K,V> extends HashMap<K,HashSet<V>>{
 		HashSet<V> l=this.get(key);
 		return l != null && l.contains(value);
 	}
+	
 	/**
 	 * Returns the whole set from a given key
 	 * @param key
@@ -50,7 +52,8 @@ public class HashMapSet<K,V> extends HashMap<K,HashSet<V>>{
 	 */
 	public HashSet<V> getSet(K key){
 		return this.get(key);
-	}	
+	}
+	
 	/**
 	 * Adds a new set to the specified key
 	 * @param key
@@ -58,16 +61,18 @@ public class HashMapSet<K,V> extends HashMap<K,HashSet<V>>{
 	 */
 	public void putSet(K key,HashSet<V> value){		
 		this.put(key,value);
-	}	
+	}
+	
 	/**
-	 * Removes key1 from set key2 and viceversa
+	 * Removes key1 from set key2 and vice-versa
 	 * @param key1
 	 * @param key2
 	 */
 	public void removeFromBothSets(K key1, K key2){
 		getSet(key1).remove(key2);
 		getSet(key2).remove(key1);
-	}	
+	}
+	
 	/**
 	 * Removes a value from the set of the specified key
 	 * @param key

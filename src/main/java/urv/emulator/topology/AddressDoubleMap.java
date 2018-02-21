@@ -16,8 +16,8 @@ public class AddressDoubleMap<K1,K2> {
 	//	CONSTRUCTORS --
 	
 	public AddressDoubleMap() {
-		inetToIntMap=new Hashtable<K1,K2>();
-		intToInetMap= new Hashtable<K2,K1>();
+		inetToIntMap=new Hashtable<>();
+		intToInetMap= new Hashtable<>();
 	}
 	
 	//	PUBLIC METHODS --
@@ -39,7 +39,7 @@ public class AddressDoubleMap<K1,K2> {
 	 * @param nodeNumber
 	 * @return
 	 */
-	public K1 getInetAddress(K2 key2){
+	public K1 getAddress(K2 key2){
 		return intToInetMap.get(key2);
 	}	
 	/**
