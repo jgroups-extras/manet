@@ -69,12 +69,9 @@ public class OMOLSR extends Protocol {
                 controller.computeMST();
             }
             // The message is addressed to a multicast group
-            OMOLSRHeader header = new OMOLSRHeader();
-            header.setType(OMOLSRHeader.DATA);
-            header.setGroupId(mcastAddr);
-            //Since OLSR changes src address we must recover this information
-            //at omolsr level
-            header.setSrcAddress(localAddress);
+            OMOLSRHeader header = new OMOLSRHeader().setType(OMOLSRHeader.DATA).setGroupId(mcastAddr)
+              //Since OLSR changes src address we must recover this information at omolsr level
+              .setSrcAddress(localAddress);
             msg.putHeader(getId(),header);
             handleOutgoingDataMessage(msg);
             return null;

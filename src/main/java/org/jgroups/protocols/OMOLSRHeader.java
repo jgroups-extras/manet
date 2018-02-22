@@ -36,9 +36,6 @@ public class OMOLSRHeader extends Header {
      */
     private HashMapSet<OLSRNode,OLSRNode> forwardingTable = new HashMapSet<>();
     
-	/**
-	 * @param type
-	 */
 	public OMOLSRHeader() {
 		
 	}
@@ -81,32 +78,31 @@ public class OMOLSRHeader extends Header {
 	}
 
 
-	/**
-	 * Sets the list of all nodes that must receive the
-	 * packet
-	 * @param list
-	 */
-	public void setForwardingTable(HashMapSet<OLSRNode,OLSRNode> forwardingTable){
+	public OMOLSRHeader setForwardingTable(HashMapSet<OLSRNode,OLSRNode> forwardingTable){
 		this.forwardingTable = forwardingTable;
+		return this;
 	}
 
 	/**
 	 * @param groupId the groupId to set
 	 */
-	public void setGroupId(Address groupId) {
+	public OMOLSRHeader setGroupId(Address groupId) {
 		this.groupId = (IpAddress)groupId;
+		return this;
 	}
 
 	
 	/**
 	 * @param srcAddress The srcAddress to set.
 	 */
-	public void setSrcAddress(Address srcAddress) {
+	public OMOLSRHeader setSrcAddress(Address srcAddress) {
 		this.srcAddress = (IpAddress)srcAddress;
+		return this;
 	}
 	
-	public void setType(byte type){
+	public OMOLSRHeader setType(byte type){
 		this.type = type;
+		return this;
 	}
 
     @Override
@@ -182,7 +178,7 @@ public class OMOLSRHeader extends Header {
 
     @Override
 	public String toString() {
-		StringBuffer ret = new StringBuffer();
+		StringBuilder ret = new StringBuilder();
 		ret.append("["
 				+ type2Str(type));
 		if (groupId!=null){
@@ -195,14 +191,12 @@ public class OMOLSRHeader extends Header {
 			// TODO show the list of successive destinations
 			//ret.append(", something=" + something);
 			ret.append("\n");
-			for(OLSRNode node:forwardingTable.keySet()){
-				Set<OLSRNode> nodeSet = forwardingTable.get(node);
-				ret.append("+ VN-Node:"+node+" is responsible for: \n");
+			for(Map.Entry<OLSRNode,HashSet<OLSRNode>> olsrNodeHashSetEntry : forwardingTable.entrySet()){
+				Set<OLSRNode> nodeSet =olsrNodeHashSetEntry.getValue();
+				ret.append("+ VN-Node:"+ olsrNodeHashSetEntry.getKey() +" is responsible for: \n");
 				for(OLSRNode nodeInSet:nodeSet){
 					ret.append("\t - Node "+nodeInSet+"\n");
-					
 				}
-				
 			}
 		}
 		if (type == CONTROL){
