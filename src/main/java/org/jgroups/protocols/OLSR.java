@@ -204,14 +204,14 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 	 * @param msg
 	 */
 	private void updateBandwidth(Message msg) {
-		BwData bd = (BwData) msg.getObject();
+		BwData bd =msg.getObject();
 		//The coefficient or weight of each node will be defined as following:		
 		//Bandwidth_coefficient = base_weight + 1/maxIncomingBytes + 1/maxIncomingPackets		
 		//The best node is a combination of the best connection (bytes) and best processor (packets)
 		localNode.setBwBytesCapacity(bd.getMaxIncomingBytes());
 		localNode.setBwMessagesCapacity(bd.getMaxIncomingPackets());
-		float bandwidthCoefficient = 10000000.0f / new Float(bd.getMaxIncomingBytes()).floatValue()
-			+ 1000.0f / new Float(bd.getMaxIncomingPackets()).floatValue();
+		float bandwidthCoefficient = 10000000.0f / (float)bd.getMaxIncomingBytes()
+			+ 1000.0f / (float)bd.getMaxIncomingPackets();
 		localNode.setBandwithCoefficient(bandwidthCoefficient);	
 		System.out.println("NEW BW_COEF PER NODE: "+localNode);					
 	}
