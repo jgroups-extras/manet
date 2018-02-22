@@ -157,7 +157,7 @@ public class ApplicationConfig {
 		"ucast_send_buf_size=\"640K\" " +
 		"max_bundle_size=\"64K\" " +
 		"ip_ttl=\"32\" " +
-		"enable_diagnostics=\"false\" " +
+		"enable_diagnostics=\"true\" " +
 		"thread_naming_pattern=\"cl\" " +		
 		"thread_pool.enabled=\"true\" " +
 		"thread_pool.min_threads=\"2\" " +
