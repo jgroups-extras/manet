@@ -148,8 +148,8 @@ public class ApplicationConfig {
 	}
 	private static String getJOLSR_UDP(int port){
 		return "<" +
-	//	"JOLSR_UDP " +
-		"UDP " +
+		"JOLSR_UDP " +
+		// "UDP " +
 		"bind_port=\""+port+"\" "+
 		"tos=\"8\" " +
 		"port_range=\"1000\" " +
