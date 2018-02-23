@@ -360,7 +360,7 @@ public class JOLSR_UDP extends UDP implements Runnable {
         // 3. Create socket for receiving IP multicast packets
         if(ip_mcast) {
             // 3a. Create mcast receiver socket
-        	InetAddress mcast_ipAddress = mcast_addr.getIpAddress();
+        	InetAddress mcast_ipAddress = getMulticastAddress();
             mcast_sock=new MulticastSocket(mcast_port);
             mcast_sock.setTimeToLive(ip_ttl);
             if(tos > 0) {
@@ -397,6 +397,12 @@ public class JOLSR_UDP extends UDP implements Runnable {
                 mcast_send_sockets=new MulticastSocket[interfaces.size()];
                 int index=0;
                 for(NetworkInterface intf : interfaces) {
+                	Enumeration<InetAddress> inetAddresses = intf.getInetAddresses();
+                	if (!inetAddresses.hasMoreElements()) {
+                		// No addresses bound to interface. Skip!
+                		log.warn("Skipping interface with no address bound: " + intf.getDisplayName());
+                		continue;
+                	}
                     mcast_send_sockets[index]=new MulticastSocket();
                     mcast_send_sockets[index].setNetworkInterface(intf);
                     mcast_send_sockets[index].setTimeToLive(ip_ttl);

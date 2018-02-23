@@ -1,22 +1,19 @@
 package org.jgroups.protocols;
 
+import org.jgroups.Address;
+import org.jgroups.Global;
+import org.jgroups.Message;
+import org.jgroups.annotations.Property;
+import org.jgroups.stack.IpAddress;
+import urv.emulator.VirtualDatagramSocket;
+import urv.emulator.VirtualNetworkInformation;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Collection;
-
-import org.jgroups.Address;
-import org.jgroups.Global;
-import org.jgroups.Message;
-import org.jgroups.annotations.Property;
-import org.jgroups.logging.Log;
-import org.jgroups.logging.LogFactory;
-import org.jgroups.stack.IpAddress;
-
-import urv.emulator.VirtualDatagramSocket;
-import urv.emulator.VirtualNetworkInformation;
 
 /**
  * This protocol is an adaptation of the original UDP from JGroups
@@ -31,42 +28,25 @@ public class EMU_UDP extends UDP {
 
     private final static String MCAST_RECEIVER_THREAD_NAME = "UDP mcast receiver";
 
-    protected final Log        log=LogFactory.getLog(this.getClass());
-
-    private VirtualNetworkInformation vni = VirtualNetworkInformation.getInstance();
-
-    /** Maintain a list of local ports opened by DatagramSocket. If this is 0, this option is turned off.
-     * If bind_port is > 0, then this option will be ignored */
-    int             num_last_ports=100;
+    private final VirtualNetworkInformation vni = VirtualNetworkInformation.getInstance();
 
     /** The multicast address used for sending and receiving packets */
     String          mcast_addr_name="228.8.8.8";
 
     /** The multicast receiver thread */
-    Thread          mcast_receiver=null;
+    Thread          mcast_receiver;
 
     /** The unicast receiver thread */
-    UcastReceiver   ucast_receiver=null;
+    UcastReceiver   ucast_receiver;
   
     /** Number of the emulated node */
     @Property(description="Number of the emulated node.")
-    protected int				emu_node_id=0;
+    protected int				emu_node_id;
 
     @Property(description="Port number of the emulated node")
-    protected int				emu_port=0;
-    
-    @Property(description="Discard incompatible packets. Default is discard.")
-    protected boolean discard_incompatible_packets=true;
+    protected int				emu_port;
 
-    @Property(description="Enable bundling")
-    protected boolean enable_bundling=false;
-    
-    @Property(description="Maximum bundle timeout")
-    protected int max_bundle_timeout=30;
-    
-    @Property(description="Use loopback network interface. Default is true")
-    protected boolean loopback=true;
-    
+
     /**
      * Creates the EMU_UDP protocol, and initializes the
      * state variables, does however not start any sockets or threads.
@@ -126,7 +106,7 @@ public class EMU_UDP extends UDP {
     @Override
 	protected void createSockets() throws Exception {
         if(bind_addr != null)
-            if(log.isDebugEnabled()) log.debug("sockets will use interface " + bind_addr.getHostAddress());            
+            log.debug("sockets will use interface " + bind_addr.getHostAddress());
         sock = createVirtualDatagramSocket();        	
         if(tos > 0) {
             try {
@@ -142,7 +122,7 @@ public class EMU_UDP extends UDP {
             throw new Exception("EMU_UDP.createSocket(): sock is null");
 
         local_addr=new IpAddress(sock.getLocalAddress(), sock.getLocalPort());
-        if(log.isDebugEnabled()) log.debug("socket information:\n" + dumpSocketInfo());
+        log.debug("socket information:\n" + dumpSocketInfo());
     }
     
     protected VirtualDatagramSocket createVirtualDatagramSocket() {

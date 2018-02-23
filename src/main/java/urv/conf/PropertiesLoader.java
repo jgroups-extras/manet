@@ -17,7 +17,7 @@ public class PropertiesLoader {
 	
 	//	CONSTANTS --
 	
-    private static PropertiesLoader instance;
+    private static final PropertiesLoader instance=new PropertiesLoader();
     private static final String EMULATED = "EMULATED";
     private static final String COMM_LOG = "COMM_LOG";
     private static final String UNICAST_PORT = "UNICAST_PORT";
@@ -34,7 +34,7 @@ public class PropertiesLoader {
     
     //	CLASS FIELDS --
     
-    private Properties props;
+    private final Properties props;
     private String fileName;
     private Properties defaults = null;
 
@@ -85,7 +85,7 @@ public class PropertiesLoader {
     }
     public static String[] getEmulationTasks() {
     	String tasks = getInstance().props.getProperty(EMULATION_TASKS);
-    	if (tasks.equals("")){
+    	if (tasks.isEmpty()){
     		return new String[]{};
     	} else {
     		return tasks.split(",");
@@ -94,54 +94,43 @@ public class PropertiesLoader {
     public static String getGraphFile() {
     	String graphFile = getInstance().props.getProperty(GRAPH_FILE);
     	if (graphFile.contains("\\"))
-    		graphFile = graphFile.replace("\\", ""+File.separatorChar);
+    		graphFile = graphFile.replace("\\", String.valueOf(File.separatorChar));
         return graphFile;
     }
     public static PropertiesLoader getInstance(){
-        if(instance==null) {
-            instance=new PropertiesLoader();
-        }
         return instance;
     }
     public static String getMulticastProtocol() {
         return getInstance().props.getProperty(MULTICAST_PROTOCOL);
     }
     public static float getSendingProb() {
-        return Float.valueOf(getInstance().props.
-                getProperty(SENDING_PROB)).floatValue();
+        return Float.valueOf(getInstance().props.getProperty(SENDING_PROB));
     }
     public static int getUnicastPort() {
-        return Integer.valueOf(getInstance().props.
-                getProperty(UNICAST_PORT)).intValue();
+        return Integer.valueOf(getInstance().props.getProperty(UNICAST_PORT));
     }
     public static boolean isCommunicationLog() {
-        return Boolean.valueOf(getInstance().props.getProperty(COMM_LOG)).
-                booleanValue();
+        return Boolean.valueOf(getInstance().props.getProperty(COMM_LOG));
     }
     public static boolean isDynamicCredit() {
-		return Boolean.valueOf(getInstance().props.getProperty(DYNAMIC_CREDIT))
-			.booleanValue();
+		return Boolean.valueOf(getInstance().props.getProperty(DYNAMIC_CREDIT));
 	}
     public static boolean isEmulated() {
-        return Boolean.valueOf(getInstance().props.getProperty(EMULATED)).
-                booleanValue();
+        return Boolean.valueOf(getInstance().props.getProperty(EMULATED));
     }
     public static boolean isReliabilityEnabled() {
-        return Boolean.valueOf(getInstance().props.getProperty(RELIABILITY)).
-                booleanValue();
+        return Boolean.valueOf(getInstance().props.getProperty(RELIABILITY));
     }
     public static boolean isThroughputOptimizationHopCountEnabled() {
-		return Boolean.valueOf(getInstance().props.getProperty(THROUGHPUT_OPTIMIZATION_HOP_COUNT))
-			.booleanValue();
+		return Boolean.valueOf(getInstance().props.getProperty(THROUGHPUT_OPTIMIZATION_HOP_COUNT));
 	}
     public static boolean isThroughputOptimizationNetworkSelfKnowledgementEnabled() {
-		return Boolean.valueOf(getInstance().props.getProperty(THROUGHPUT_OPTIMIZATION_NETWORK_SELF_KNOWLEGEMENT))
-			.booleanValue();
+		return Boolean.valueOf(getInstance().props.getProperty(THROUGHPUT_OPTIMIZATION_NETWORK_SELF_KNOWLEGEMENT));
 	}    
     
     //	PUBLIC METHODS --
     
-    public void changeFile(String filename) throws FileNotFoundException, IOException{
+    public void changeFile(String filename) throws IOException{
         this.fileName=filename;
         this.load();
     }    
@@ -156,7 +145,7 @@ public class PropertiesLoader {
         this.fileName=filename;
         props.store(new FileOutputStream(this.fileName), "Popeye properties file");
     }	
-	private void load() throws FileNotFoundException, IOException {
+	private void load() throws IOException {
         props.load(new FileInputStream(fileName));
     }
 }

@@ -31,8 +31,12 @@ public class AppLauncher {
 	private EmulationController emulationController = null;
 
 	//	CONSTRUCTORS --
-	
-	public AppLauncher(){
+
+    public AppLauncher() {
+
+    }
+
+	public void start(){
 		Log.getInstance().setCurrentLevel(Log.INFO);
 		// activateLog4J();
 		registerDumpingClasses();
@@ -58,7 +62,8 @@ public class AppLauncher {
 	
 	public static void main(String[] args) {
 		try {
-			new AppLauncher();
+            AppLauncher launcher=new AppLauncher();
+            launcher.start();
 		} catch (Exception e){
 			e.printStackTrace();
 		}
@@ -98,14 +103,10 @@ public class AppLauncher {
 				app = (Application)newObj;
 				app.registerAppLauncher(this);
 			}
-		} catch (InstantiationException e) {
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
 			e.printStackTrace();
 		}
-		return app;
+        return app;
 	}
 	
 	private static void registerDumpingClasses() {
@@ -122,14 +123,9 @@ public class AppLauncher {
 		int networkSize = vni.getNetworkSize();
 		for (int i=0;i<networkSize;i++){
 			final Application app = newApplicationInstance();
-			channelGenerator.registerApplicationId(app, new Integer(i));
-			//Launch each application in a new Thread
-			new Thread(){
-				@Override
-				public void run(){
-					app.start();
-				}
-			}.start();
+			channelGenerator.registerApplicationId(app, i);
+			// Launch each application in a new Thread
+			new Thread(app::start).start();
 			try {
 				Thread.sleep(200);
 			} catch (InterruptedException e) {
@@ -149,15 +145,11 @@ public class AppLauncher {
 					((EmulatorTask)taskObj).setEmulationController(emulationController);
 					((EmulatorTask)taskObj).start();
 				}
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-			} catch (InstantiationException e) {
-				e.printStackTrace();
-			} catch (IllegalAccessException e) {
+			} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
 				e.printStackTrace();
 			}
 
-		}
+        }
 	}
 	
 	private void startRealApplication() {

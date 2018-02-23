@@ -10,6 +10,7 @@ import org.jgroups.protocols.pbcast.NAKACK2;
  */
 public class Constants {
     public static short NAKACK2_ID=ClassConfigurator.getProtocolId(NAKACK2.class);
+    public static final short UNICAST_ID=ClassConfigurator.getProtocolId(UNICAST3.class);
 
     public static final short OMOLSR_ID=5580;
     public static final short OLSR_ID=5581;

@@ -1,8 +1,21 @@
 package urv.machannel;
 
-import org.jgroups.*;
+import java.io.Serializable;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jgroups.Address;
+import org.jgroups.JChannel;
+import org.jgroups.MembershipListener;
+import org.jgroups.Message;
+import org.jgroups.MessageListener;
+import org.jgroups.Receiver;
+import org.jgroups.ReceiverAdapter;
+import org.jgroups.View;
 import org.jgroups.stack.IpAddress;
 import org.jgroups.util.Util;
+
 import urv.conf.PropertiesLoader;
 import urv.emulator.core.EmulationController;
 import urv.emulator.tasks.GroupMembershipNotifier;
@@ -13,11 +26,6 @@ import urv.olsr.mcast.MulticastAddress;
 import urv.olsr.mcast.TopologyEvent;
 import urv.util.graph.NetworkGraph;
 import urv.util.graph.Weight;
-
-import java.io.Serializable;
-import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This class provides an implementation of the MChannel interface
@@ -58,8 +66,8 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 		this.mcastAddr = mcastAddr;
     	if (PropertiesLoader.isEmulated()){
     		this.controller = controller;
-    		this.notifier = this.controller.getMessageNotifier();
-    		this.groupMembershipInformation = this.controller.getGroupMembershipNotifier();
+    		this.notifier = controller != null? this.controller.getMessageNotifier() : null;
+    		this.groupMembershipInformation = controller != null? this.controller.getGroupMembershipNotifier() : null;
 	    	groupMembershipInformation.newGroupJoined(
               mcastAddr, channel.getAddress(), this);
 	    }
@@ -243,6 +251,24 @@ public class MChannelImpl extends ReceiverAdapter implements MChannel {
 			} else {
 				//Now notify that we have received this message
 				notifier.newMessageReceived(msg, msg.getSrc(), msg.getDest(), msg.getDest(), seq);
+			}
+		} else {
+			//Check application messages
+			//In the emulation we will add a seq number to check that all messages
+			//get to their destinations
+			if (msg.getObject() instanceof SequenceNumberMessageWrapper){
+				SequenceNumberMessageWrapper messageWrapper=msg.getObject();
+				int seq = messageWrapper.getSeqNumber();
+				Serializable content = messageWrapper.getContent();
+				msg.setObject(content);
+				Address addr = msg.getDest();
+				if (addr == null) {
+					//Now notify that we have received this message
+					notifier.newMessageReceived(msg,msg.getSrc(),msg.getDest(),getLocalAddress(),seq);
+				} else {
+					//Now notify that we have received this message
+					notifier.newMessageReceived(msg,msg.getSrc(),msg.getDest(),msg.getDest(),seq);
+				}
 			}
 		}
 		return msg;

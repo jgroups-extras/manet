@@ -45,8 +45,8 @@ public class VirtualDatagramSocket extends MulticastSocket {
 			// Only a receivingQueue per host			
 			enabled = true;			
 			myReceivingQueue = new ConcurrentLinkedBlockingQueue<>(500);
-			receivingQueues.registerQueue(addr, myReceivingQueue);			
-			log.info("VirtualDatagramSocket created. Delivery probability: "+PropertiesLoader.getSendingProb());
+			receivingQueues.registerQueue(addr, myReceivingQueue);
+			log.info("VirtualDatagramSocket created. Delivery probability: "+ PropertiesLoader.getSendingProb());
 		}		
 	}	
 	

@@ -1,27 +1,15 @@
 package urv.app.samples;
 
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Rectangle;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
-import javax.swing.WindowConstants;
-
 import urv.app.Application;
 import urv.log.gui.SwingAppenderUI;
 import urv.machannel.MChannel;
 import urv.olsr.mcast.MulticastAddress;
+
+import javax.swing.*;
+import java.awt.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Objects;
 
 public class AppTest extends Application{
 
@@ -41,7 +29,7 @@ public class AppTest extends Application{
 	
 	//private boolean dumping = false;
 	
-	private DumpingFrame dumpingFrame = new DumpingFrame();
+	private final DumpingFrame dumpingFrame = new DumpingFrame();
 
 	private JLabel jLabelLocalIP = null;
 	
@@ -52,12 +40,10 @@ public class AppTest extends Application{
 	 * Launches this application
 	 */
 	public static void main(String[] args) {
-		SwingUtilities.invokeLater(new Runnable() {
-			public void run() {
-				AppTest application = new AppTest();
-				application.getJFrame().setVisible(true);
-			}
-		});
+		SwingUtilities.invokeLater(() -> {
+            AppTest application = new AppTest();
+            application.getJFrame().setVisible(true);
+        });
 	}
 
 	@Override
@@ -69,14 +55,9 @@ public class AppTest extends Application{
 	/**
 	 * Method that verify if the group multicast Address is correct
 	 */
-	private boolean checkGroupMAddr(String mAddr){
+	private static boolean checkGroupMAddr(String mAddr){
 		try {
-			if ((InetAddress.getByName(mAddr)).isMulticastAddress()){
-				return true;
-			}
-			else{
-				return false;
-			}
+			return (InetAddress.getByName(mAddr)).isMulticastAddress();
 		} catch (UnknownHostException e) {
 			//e.printStackTrace();
 			return false;
@@ -108,24 +89,20 @@ public class AppTest extends Application{
 			jButtonCreateGroup = new JButton();
 			jButtonCreateGroup.setBounds(new Rectangle(310, 13, 72, 23));
 			jButtonCreateGroup.setText("Join");
-			jButtonCreateGroup.addActionListener(new java.awt.event.ActionListener() {
-				public void actionPerformed(java.awt.event.ActionEvent e) {
+			jButtonCreateGroup.addActionListener(e -> {
 
-					if(checkGroupMAddr(jTextFieldGroupMAddr.getText())){//If it's a correct multicast address
-						if(!existTab(jTextFieldGroupMAddr.getText())){//If the tab doesn't exit, a new group panel is added and selected
-							jTabbedPaneGroups.add(jTextFieldGroupMAddr.getText(), new GroupPanel(jTabbedPaneGroups,startGroup(jTextFieldGroupMAddr.getText()),jTextFieldGroupMAddr.getText()));
-							jTabbedPaneGroups.setSelectedIndex(jTabbedPaneGroups.getTabCount()-1);
-							((GroupPanel)jTabbedPaneGroups.getSelectedComponent()).goRefresh();
-						}
+                if(checkGroupMAddr(jTextFieldGroupMAddr.getText())){//If it's a correct multicast address
+                    if(!existTab(jTextFieldGroupMAddr.getText())){//If the tab doesn't exit, a new group panel is added and selected
+                        jTabbedPaneGroups.add(jTextFieldGroupMAddr.getText(), new GroupPanel(jTabbedPaneGroups,startGroup(jTextFieldGroupMAddr.getText()),jTextFieldGroupMAddr.getText()));
+                        jTabbedPaneGroups.setSelectedIndex(jTabbedPaneGroups.getTabCount()-1);
+                        ((GroupPanel)jTabbedPaneGroups.getSelectedComponent()).goRefresh();
+                    }
 
-					}else{
-						showErrorMessage("Incorrect Multicast Address "+jTextFieldGroupMAddr.getText());
-					}
-					jTextFieldGroupMAddr.setText("");
-				}
-
-
-			});
+                }else{
+                    showErrorMessage("Incorrect Multicast Address "+jTextFieldGroupMAddr.getText());
+                }
+                jTextFieldGroupMAddr.setText("");
+            });
 		}
 		return jButtonCreateGroup;
 	}
@@ -139,11 +116,7 @@ public class AppTest extends Application{
 			jButtonDump = new JButton();
 			jButtonDump.setBounds(new Rectangle(927, 13, 72, 23));
 			jButtonDump.setText("Dump");
-			jButtonDump.addActionListener(new java.awt.event.ActionListener() {
-				public void actionPerformed(java.awt.event.ActionEvent e) {
-					dumpingFrame.setVisible(true);
-				}
-			});
+			jButtonDump.addActionListener(e -> dumpingFrame.setVisible(true));
 		}
 		return jButtonDump;
 	}
@@ -216,35 +189,25 @@ public class AppTest extends Application{
 	        
 	        /*============================ setup action listeners =================================*/
 	        
-	        jButtonCreateGroup.addActionListener(new java.awt.event.ActionListener() {
-				public void actionPerformed(java.awt.event.ActionEvent e) {
+	        jButtonCreateGroup.addActionListener(e -> {
 
-					if(checkGroupMAddr(jTextFieldGroupMAddr.getText())){//If it's a correct multicast address
-						if(!existTab(jTextFieldGroupMAddr.getText())){//If the tab doesn't exit, a new group panel is added and selected
-							jTabbedPaneGroups.add(jTextFieldGroupMAddr.getText(), new GroupPanel(jTabbedPaneGroups,startGroup(jTextFieldGroupMAddr.getText()),jTextFieldGroupMAddr.getText()));
-							jTabbedPaneGroups.setSelectedIndex(jTabbedPaneGroups.getTabCount()-1);
-							((GroupPanel)jTabbedPaneGroups.getSelectedComponent()).goRefresh();
-						}
-						//TODO: if exists the tab set it foreground
-					}else{
-						showErrorMessage("Incorrect Multicast Address "+jTextFieldGroupMAddr.getText());
-					}
-					jTextFieldGroupMAddr.setText("");
-				}
-
-
-			});
-	        jTabbedPaneGroups.addChangeListener(new javax.swing.event.ChangeListener() {
-				public void stateChanged(javax.swing.event.ChangeEvent e) {
-					if(jTabbedPaneGroups.getTabCount()>0 && jTabbedPaneGroups.getSelectedIndex()>=0) 
-						jTabbedPaneGroups.setForegroundAt(jTabbedPaneGroups.getSelectedIndex(),Color.black);
-				}
-			});
-			jButtonDump.addActionListener(new java.awt.event.ActionListener() {
-				public void actionPerformed(java.awt.event.ActionEvent e) {
-					dumpingFrame.setVisible(true);
-				}
-			});	        
+                if(checkGroupMAddr(jTextFieldGroupMAddr.getText())){//If it's a correct multicast address
+                    if(!existTab(jTextFieldGroupMAddr.getText())){//If the tab doesn't exit, a new group panel is added and selected
+                        jTabbedPaneGroups.add(jTextFieldGroupMAddr.getText(), new GroupPanel(jTabbedPaneGroups,startGroup(jTextFieldGroupMAddr.getText()),jTextFieldGroupMAddr.getText()));
+                        jTabbedPaneGroups.setSelectedIndex(jTabbedPaneGroups.getTabCount()-1);
+                        ((GroupPanel)jTabbedPaneGroups.getSelectedComponent()).goRefresh();
+                    }
+                    //TODO: if exists the tab set it foreground
+                }else{
+                    showErrorMessage("Incorrect Multicast Address "+jTextFieldGroupMAddr.getText());
+                }
+                jTextFieldGroupMAddr.setText("");
+            });
+	        jTabbedPaneGroups.addChangeListener(e -> {
+                if(jTabbedPaneGroups.getTabCount()>0 && jTabbedPaneGroups.getSelectedIndex()>=0)
+                    jTabbedPaneGroups.setForegroundAt(jTabbedPaneGroups.getSelectedIndex(),Color.black);
+            });
+			jButtonDump.addActionListener(e -> dumpingFrame.setVisible(true));
 		}
 		return jContentPane;
 	}
@@ -325,13 +288,11 @@ public class AppTest extends Application{
 		if (jTabbedPaneGroups == null) {
 			jTabbedPaneGroups = new JTabbedPane();
 			jTabbedPaneGroups.setBounds(new Rectangle(15, 44, 989, 657));
-			jTabbedPaneGroups.addChangeListener(new javax.swing.event.ChangeListener() {
-				public void stateChanged(javax.swing.event.ChangeEvent e) {
-					if(jTabbedPaneGroups.getTabCount()>0 && jTabbedPaneGroups.getSelectedIndex()>=0) 
-						jTabbedPaneGroups.setForegroundAt(jTabbedPaneGroups.getSelectedIndex(),Color.black);
-				}
-			});
-			jTabbedPaneGroups.setTabLayoutPolicy(jTabbedPaneGroups.SCROLL_TAB_LAYOUT);
+			jTabbedPaneGroups.addChangeListener(e -> {
+                if(jTabbedPaneGroups.getTabCount()>0 && jTabbedPaneGroups.getSelectedIndex()>=0)
+                    jTabbedPaneGroups.setForegroundAt(jTabbedPaneGroups.getSelectedIndex(),Color.black);
+            });
+			jTabbedPaneGroups.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
 		}
 		return jTabbedPaneGroups;
 	}
@@ -350,14 +311,13 @@ public class AppTest extends Application{
 		return jTextFieldGroupMAddr;
 	}
 
-	private Component getLogPane() {
-		SwingAppenderUI appenderUI = new SwingAppenderUI();
-        //appenderUI.createTabsPerLevel();
+	private static Component getLogPane() {
+		//appenderUI.createTabsPerLevel();
 		//appenderUI.addTab(Level.ALL);
-		return appenderUI;
+		return new SwingAppenderUI();
 	}
 
-	private void showErrorMessage(String string) {
+	private static void showErrorMessage(String string) {
 		JOptionPane.showMessageDialog(null, string,"Error",JOptionPane.ERROR_MESSAGE);
 
 	}
@@ -382,7 +342,7 @@ public class AppTest extends Application{
 		groupChannel = createMChannel(mcastAddr);//create a MChannel for the group in the multicast address
 		//groupChannel.start();
 		
-		if(jLabelLocalIP.getText()==""){
+		if(Objects.equals(jLabelLocalIP.getText(), "")){
 			jLabelLocalIP.setText("Your local IP is: "+groupChannel.getLocalAddress().toString().split(":")[0]);
 			jContentPane.updateUI();
 		}

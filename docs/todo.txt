@@ -1,0 +1,8 @@
+
+
+Todos
+=====
+
+- JOLSR_UNICAST: can it be a simple subclass of UNICAST3?
+- JOLSR_UDP/EMU: dito for UDP
+- Provide a proper XML configuration file for a default setup. This is currently hard-coded in ApplicationConfig

@@ -24,12 +24,14 @@ public class VirtualAddressGenerator {
 	
 	private byte[] baseIPs;
 	private AddressDoubleMap<Address,Node> addressMap;
+	private AddressDoubleMap<InetAddress,Node> inetAddressMap;
 
 	//	CONSTRUCTORS --
 	
 	public VirtualAddressGenerator() {
 		baseIPs=ApplicationConfig.emulatedIPs;
 		addressMap = new AddressDoubleMap<>();
+		inetAddressMap = new AddressDoubleMap<>();
 	}
 	
 	//	PUBLIC METHODS --
@@ -53,6 +55,7 @@ public class VirtualAddressGenerator {
 			addr = new IpAddress(inetAddress, UNICAST_PORT);
 			//Store mapping
 			addressMap.addDoubleMap(addr, new Node(nodeNumber));
+			inetAddressMap.addDoubleMap(inetAddress, new Node(nodeNumber));
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}		
@@ -76,6 +79,16 @@ public class VirtualAddressGenerator {
 		return addressMap.getAddress(nodeNumber);
 	}
 	
+	/**
+	 * Returns the InetAddress of the node from the given 
+	 * node number
+	 * @param nodeNumber
+	 * @return
+	 */
+	public InetAddress getInetAddress(Node nodeNumber){
+		return inetAddressMap.getAddress(nodeNumber);
+	}
+
 	/**
 	 * Returns the node number of the node from the given 
 	 * InetAddress

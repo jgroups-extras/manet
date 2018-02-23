@@ -1,10 +1,10 @@
 package urv.conf;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
 import org.jgroups.Address;
 import org.jgroups.stack.IpAddress;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * This class is used to set the protocol stack into the application.
@@ -22,7 +22,7 @@ public class ApplicationConfig {
 	public static final int LOCAL_BROADCAST_MIN_NEIGHBOURS = 2;
 	//Initial value for the emulated Ips (i.e the first node will have assigned this address. Other nodes
 	//will have subsequent addresses. Only valid till 254 nodes in the emulation
-	public static byte[] emulatedIPs = new byte[]{(byte)192,(byte)168,(byte)145,(byte)1};
+	public static byte[] emulatedIPs ={(byte)192,(byte)168,(byte)145,(byte)1};
 	public static Address BROADCAST_ADDRESS;
 
 	static final String XML_HEADER = "<config xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" + 
@@ -68,7 +68,7 @@ public class ApplicationConfig {
 			}
 			stack.append(getOLSR(group)+"\n");				
 			if (PropertiesLoader.isReliabilityEnabled()){
-				stack.append(getReliability(nodeNumber)+"\n");
+				stack.append(getReliability()+"\n");
 			}
 			stack.append(getMulticastProtocol(group)+"\n");
 			stack.append(getFC()+"\n");
@@ -81,7 +81,7 @@ public class ApplicationConfig {
 			}			
 			stack.append(getOLSR(group)+"\n");				
 			if (PropertiesLoader.isReliabilityEnabled()){
-				stack.append(getReliability(nodeNumber)+"\n");
+				stack.append(getReliability()+"\n");
 			}
 			stack.append(getMulticastProtocol(group)+"\n");
 			stack.append(getFC()+"\n");
@@ -113,14 +113,14 @@ public class ApplicationConfig {
 	 */
 	private static String getEMU_UDP(int nodeNumber, int port){
 		StringBuilder buff = new StringBuilder();
-		String emu_node_id = nodeNumber+"";
-		String emu_port = port + "";
+		String emu_node_id =String.valueOf(nodeNumber);
+		String emu_port =String.valueOf(port);
 
 		buff.append("<"
 		+"EMU_UDP "
-		+ "mcast_send_buf_size=\"640000\" discard_incompatible_packets=\"true\" ucast_recv_buf_size=\"20000000\" "
-		+ "loopback=\"true\" mcast_recv_buf_size=\"25000000\" max_bundle_size=\"64000\" max_bundle_timeout=\"30\" "
-		+ "ucast_send_buf_size=\"640000\" tos=\"16\" enable_bundling=\"false\" ip_ttl=\"32\" "
+		+ "mcast_send_buf_size=\"640K\" discard_incompatible_packets=\"true\" ucast_recv_buf_size=\"20M\" "
+		+ "mcast_recv_buf_size=\"25M\" max_bundle_size=\"64K\" "
+		+ "ucast_send_buf_size=\"640K\" tos=\"16\" ip_ttl=\"32\" "
 		+ "port_range=\"1000\" "
 		+ "emu_node_id=\""+emu_node_id+"\" "
 		+ "emu_port=\""+emu_port+"\" "
@@ -149,35 +149,20 @@ public class ApplicationConfig {
 	private static String getJOLSR_UDP(int port){
 		return "<" +
 		"JOLSR_UDP " +
+		// "UDP " +
 		"bind_port=\""+port+"\" "+
 		"tos=\"8\" " +
 		"port_range=\"1000\" " +
-		"ucast_recv_buf_size=\"64000000\" " +
-		"ucast_send_buf_size=\"64000000\" " +
-		"loopback=\"false\" " +
-		"discard_incompatible_packets=\"true\" " +
-		"max_bundle_size=\"64000\" " +
-		"max_bundle_timeout=\"30\" " +
-		"use_incoming_packet_handler=\"true\" " +
+		"ucast_recv_buf_size=\"640K\" " +
+		"ucast_send_buf_size=\"640K\" " +
+		"max_bundle_size=\"64K\" " +
 		"ip_ttl=\"32\" " +
-		"enable_bundling=\"true\" " +
-		"enable_diagnostics=\"false\" " +
+		"enable_diagnostics=\"true\" " +
 		"thread_naming_pattern=\"cl\" " +		
-		"use_concurrent_stack=\"true\" " +		
 		"thread_pool.enabled=\"true\" " +
 		"thread_pool.min_threads=\"2\" " +
 		"thread_pool.max_threads=\"8\" " +
 		"thread_pool.keep_alive_time=\"5000\" " +
-		"thread_pool.queue_enabled=\"true\" " +
-		"thread_pool.queue_max_size=\"1000\" " +
-		"thread_pool.rejection_policy=\"discard\" " +
-        "oob_thread_pool.enabled=\"true\" " +
-        "oob_thread_pool.min_threads=\"1\" " +
-        "oob_thread_pool.max_threads=\"8\" " +
-        "oob_thread_pool.keep_alive_time=\"5000\" " +
-        "oob_thread_pool.queue_enabled=\"false\" " +
-        "oob_thread_pool.queue_max_size=\"100\" " +
-        "oob_thread_pool.rejection_policy=\"Run\" " +
         "/>\n";
 	}
 	private static String getMulticastProtocol(InetAddress group){
@@ -211,19 +196,14 @@ public class ApplicationConfig {
 	}
 	/**
 	 * This method returns a configured protocol to perform the message reliability
-	 * @param nodeNumber
 	 * @return reliable transmission protocol
 	 */
-	private static String getReliability(int nodeNumber){
-		return "<"
-				+"JOLSR_UNICAST timeout=\"1200,1800,2400,5000,8000\" use_gms=\"false\" "
-				+"/>";
+	private static String getReliability() {
+		return "<JOLSR_UNICAST/>\n";
 	}
 	
 	private static String getSMCAST(InetAddress group){
-		return "<"
-				+"SMCAST mcast_addr=\""+group.getHostAddress()+"\" "
-				+"/>"; 
+		return "<SMCAST mcast_addr=\""+group.getHostAddress()+"\" />";
 		//TODO Maybe we could pass a multicast port number (that obviously will not be used) only for transparency purposes
 	}
 }

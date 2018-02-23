@@ -114,12 +114,12 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		return up_prot.up(msg);
 	}
 
-
 	@Override
 	public void start() throws Exception{
 		super.start();
 		// When this method is invoked, the local address is not set yet!!
 	}
+	
 	@Override
 	public void stop() {
 		controller.unregisterMulticastGroup(mcast_addr_name);
@@ -205,20 +205,21 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		// Send a TC message with the updated group membership information (this channel is a new group)
 		controller.sendExtraTCMessage();
 	}
+	
 	/**
 	 * This method will update the information about our bandwidth capacity.
 	 *  
 	 * @param msg
 	 */
 	private void updateBandwidth(Message msg) {
-		BwData bd = (BwData) msg.getObject();
+		BwData bd =msg.getObject();
 		//The coefficient or weight of each node will be defined as following:		
 		//Bandwidth_coefficient = base_weight + 1/maxIncomingBytes + 1/maxIncomingPackets		
 		//The best node is a combination of the best connection (bytes) and best processor (packets)
 		localNode.setBwBytesCapacity(bd.getMaxIncomingBytes());
 		localNode.setBwMessagesCapacity(bd.getMaxIncomingPackets());
-		float bandwidthCoefficient = 10000000.0f / new Float(bd.getMaxIncomingBytes()).floatValue()
-			+ 1000.0f / new Float(bd.getMaxIncomingPackets()).floatValue();
+		float bandwidthCoefficient = 10000000.0f / bd.getMaxIncomingBytes()
+			+ 1000.0f / bd.getMaxIncomingPackets();
 		localNode.setBandwithCoefficient(bandwidthCoefficient);	
 		System.out.println("NEW BW_COEF PER NODE: "+localNode);					
 	}
