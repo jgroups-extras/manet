@@ -15,5 +15,5 @@
 atlassian*
 hs_err_pid*
 target/
-*/runResults/
+runResults/
 host*.txt
