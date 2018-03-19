@@ -13,6 +13,7 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.List;
 
 import org.jgroups.Address;
@@ -360,6 +361,10 @@ public class JOLSR_UDP extends UDP implements Runnable {
         // 3. Create socket for receiving IP multicast packets
         if(ip_mcast) {
             // 3a. Create mcast receiver socket
+        	if (mcast_addr == null) {
+        		log.info("Multicast address = %s:%d", mcast_group_addr, Integer.valueOf(mcast_port));
+        		mcast_addr = new IpAddress(mcast_group_addr, mcast_port);
+        	}
         	InetAddress mcast_ipAddress = mcast_addr.getIpAddress();
             mcast_sock=new MulticastSocket(mcast_port);
             mcast_sock.setTimeToLive(ip_ttl);
@@ -389,7 +394,21 @@ public class JOLSR_UDP extends UDP implements Runnable {
             // 3b. Create mcast sender socket
 //            if(send_on_all_interfaces || (send_interfaces != null && !send_interfaces.isEmpty())) {
                 List<NetworkInterface> interfaces=Util.getAllAvailableInterfaces();
-                
+                for (Iterator<NetworkInterface> i = interfaces.iterator(); i.hasNext(); ) {
+                	NetworkInterface intf = i.next();
+                	if (!intf.isUp()) {
+                		// Ignore network interface not up
+                		log.info("Interface not up: " + intf.getDisplayName() + ", will be ignored");
+                		i.remove();
+                		continue;
+                	}
+                	if (!intf.getInetAddresses().hasMoreElements()) {
+                		// Ignore network interface up but with no Inet Address bound
+                		log.info("Interface not bound to an Inet Address: " + intf.getDisplayName() + ", will be ignored");
+                		i.remove();
+                		continue;
+                	}
+                }
 //                if(send_interfaces != null)
 //                    interfaces=send_interfaces;
 //                else

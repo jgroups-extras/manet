@@ -1,9 +1,14 @@
 package org.jgroups.protocols;
 
-import org.jgroups.*;
+import org.jgroups.Address;
+import org.jgroups.Event;
+import org.jgroups.Global;
+import org.jgroups.Header;
+import org.jgroups.Message;
 import org.jgroups.annotations.Property;
 import org.jgroups.stack.IpAddress;
 import org.jgroups.stack.Protocol;
+
 import urv.bwcalc.BwData;
 import urv.conf.PropertiesLoader;
 import urv.log.Log;
@@ -79,6 +84,7 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		return up_prot.up(new Event(Event.VIEW_CHANGE,new TopologyEvent(
 				networkGraph, routingTable, localNode)));
 	}
+	
 	@Override
 	public Object sendControlMessage(Message msg){
 		OLSRHeader header = new OLSRHeader();
@@ -87,8 +93,9 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		log.debug("Sending control message...");
 		return down_prot.down(msg);
 	}
+	
 	@Override
-	public Object sendDataMessage(Message msg, OLSRNode finalDest,String mcast_addr_name){
+	public Object sendDataMessage(Message msg, OLSRNode finalDest, String mcast_addr_name){
 		OLSRHeader header = new OLSRHeader();
 		header.setType(OLSRHeader.DATA);
 		header.setDest(finalDest);
@@ -99,6 +106,7 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		msg.putHeader(id, header);
 		return down_prot.down(msg);
 	}
+	
 	/**
 	 * Creates a new event with the message and sends a the message up
 	 * in this protocol stack
@@ -114,8 +122,12 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		super.start();
 		// When this method is invoked, the local address is not set yet!!
 	}
+	
 	@Override
 	public void stop() {
+		if (controller == null) {
+			return;
+		}
 		controller.unregisterMulticastGroup(mcast_addr_name);
 	}
 
@@ -145,7 +157,8 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
         }
     }
 
-    public Object up(Message msg) {
+    @Override
+	public Object up(Message msg) {
         Header obj=msg.getHeader(id);
         if (!(obj instanceof OLSRHeader)) {
             //OLSR will also use the BW_CALC messages to perform the throughput
@@ -198,6 +211,7 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		// Send a TC message with the updated group membership information (this channel is a new group)
 		controller.sendExtraTCMessage();
 	}
+	
 	/**
 	 * This method will update the information about our bandwidth capacity.
 	 *  
@@ -210,8 +224,8 @@ public class OLSR extends Protocol implements OLSRMessageSender, OLSRMessageUppe
 		//The best node is a combination of the best connection (bytes) and best processor (packets)
 		localNode.setBwBytesCapacity(bd.getMaxIncomingBytes());
 		localNode.setBwMessagesCapacity(bd.getMaxIncomingPackets());
-		float bandwidthCoefficient = 10000000.0f / (float)bd.getMaxIncomingBytes()
-			+ 1000.0f / (float)bd.getMaxIncomingPackets();
+		float bandwidthCoefficient = 10000000.0f / bd.getMaxIncomingBytes()
+			+ 1000.0f / bd.getMaxIncomingPackets();
 		localNode.setBandwithCoefficient(bandwidthCoefficient);	
 		System.out.println("NEW BW_COEF PER NODE: "+localNode);					
 	}
